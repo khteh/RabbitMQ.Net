@@ -73,7 +73,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/test/Publisher/Publisher.csproj",
+                "${workspaceFolder}/src/RabbitMq.Publisher/RabbitMq.Publisher.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -85,9 +85,73 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/test/Subscriber/Subscriber.csproj",
+                "${workspaceFolder}/src/RabbitMq.Subscriber/RabbitMq.Subscriber.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build_publisher_release",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/src/RabbitMq.Publisher/RabbitMq.Publisher.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary",
+                "-c",
+                "Release"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "build_subscriber_release",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/src/RabbitMq.Subscriber/RabbitMq.Subscriber.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary",
+                "-c",
+                "Release"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "publish publisher Release",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "publish",
+                "${workspaceFolder}/src/RabbitMq.Publisher/RabbitMq.Publisher.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary",
+                "-c",
+                "Release",
+                "-a",
+                "x64",
+                "--os",
+                "linux"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "publish subscriber Release",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "publish",
+                "${workspaceFolder}/src/RabbitMq.Subscriber/RabbitMq.Subscriber.csproj",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary",
+                "-c",
+                "Release",
+                "-a",
+                "x64",
+                "--os",
+                "linux"
             ],
             "problemMatcher": "$msCompile"
         },
