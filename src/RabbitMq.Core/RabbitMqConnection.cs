@@ -1,0 +1,247 @@
+using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Reflection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using RabbitMq.Core.Events;
+using RabbitMq.Core.Interfaces;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using RabbitMq.Core.Extensions;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Threading;
+
+namespace RabbitMq.Core
+{
+    public class RabbitMqConnection : DisposableObject, IRabbitMqConnection
+    {
+        //RabbitMqConnectionConfiguration _configuration;
+        private static readonly SemaphoreSlim _connectionLock = new SemaphoreSlim(1, 1);
+        private readonly object _connectionEventsLock = new object();
+        private IConnection _currentConnection { get; set; }
+
+        private bool _connectionHealthy = true;
+        private readonly ILogger<RabbitMqConnection> _logger;
+        private ConnectionFactory _connectionFactory;
+        private object _connectionFactoryLock = new object();
+        protected readonly RabbitMQConfig _rabbitMqOptions;
+        /// <inheritdoc/>
+        public event EventHandler<RabbitMqConnectedEventArgs> Connected;
+        /// <inheritdoc/>
+        public event EventHandler<RabbitMqDisconnectedEventArgs> Disconnected;
+        private readonly ILoggerFactory _loggerFactory;
+
+        /// <summary>
+        /// Creates an instance of the Connection Configurations 
+        /// </summary>
+        /// <param name="logger">Logger Instance</param>
+        /// <param name="connectionConfigurations">List of connections</param>
+        public RabbitMqConnection(ILoggerFactory loggerFactory, IOptions<RabbitMQConfig> rabbitMqOptions)
+        {
+            _loggerFactory = loggerFactory;
+            _rabbitMqOptions = rabbitMqOptions.Value;
+            _logger = loggerFactory.CreateLogger<RabbitMqConnection>();
+        }
+
+        /// <inheritdoc/>
+        public async Task<IRabbitMqChannel> CreateChannel(string exchange, string type, IQueueProperties properties)
+        {
+            IConnection rabbitMqConnection = await GetConnection();
+            if (IsDisposed || IsDisposing)
+                throw new InvalidOperationException($"Channel is already Disposed");
+            //return new RabbitMqChannel(_loggerFactory.CreateLogger<RabbitMqChannel>(), rabbitMqConnection.CreateModel(), exchange, type, properties);
+            IChannel channel = await rabbitMqConnection.CreateChannelAsync();
+            await channel.ExchangeDeclareAsync(exchange, type);
+            string queueName = properties.Name;
+            if (properties.Temporary)
+            {
+                var result = await channel.QueueDeclareAsync(string.Empty);
+                queueName = result.QueueName;
+            }
+            else if (!string.IsNullOrEmpty(properties.Name))
+            {
+                await channel.QueueDeclareAsync(queue: properties.Name,
+                                    durable: properties.Durable,
+                                    exclusive: properties.Exclusive,
+                                    autoDelete: properties.AutoDelete,
+                                    arguments: null);
+            }
+            return new RabbitMqChannel(_loggerFactory.CreateLogger<RabbitMqChannel>(), channel, exchange, type, properties, queueName);
+        }
+
+        /// <inheritdoc/>
+        /// We need this connection as this kicks starts all the subscriptions
+        public async Task<IConnection> Start() => await GetConnection();
+        /// <inheritdoc/>
+        public bool IsConnected() => _connectionHealthy && _currentConnection != null && _currentConnection.IsOpen;
+        private async Task<IConnection> GetConnection()
+        {
+            if (IsDisposing || IsDisposed)
+                throw new InvalidOperationException($"The Connection has been already disposed");
+            var maxRetryCount = 3;
+            var retryCount = 0;
+            do
+            {
+                // if the Existing Connection is healthy
+                if (IsConnected())
+                    return _currentConnection;
+                await _connectionLock.WaitAsync();
+                try
+                {
+                    // check again if the connection is good
+                    if (_currentConnection != null && _currentConnection.IsOpen)
+                        return _currentConnection;
+                    // Make sure we dispose the existing connection
+                    // Hence using a different lock for the events
+                    ClearConnection($"{nameof(RabbitMqConnection)} reconnecting");
+                    try
+                    {
+                        var excecutingProcess = Process.GetCurrentProcess();
+                        FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
+                        string version = fvi.FileVersion;
+                        // Create a new Connection, we need to hook it up
+                        //GetRabbitMqConnectionFactory(_configuration);
+                        _connectionFactory = new ConnectionFactory() { Uri = new Uri($"amqp://{_rabbitMqOptions.UserName}:{_rabbitMqOptions.Password}@{_rabbitMqOptions.Endpoint}/{_rabbitMqOptions.VHost}") };
+                        _currentConnection = await _connectionFactory.CreateConnectionAsync(!string.IsNullOrWhiteSpace(_rabbitMqOptions.ConnectionName) ? _rabbitMqOptions.ConnectionName : $"{excecutingProcess?.ProcessName}_{version}");
+                        _currentConnection.ConnectionShutdownAsync += OnConnectionShutdown;
+                        _currentConnection.ConnectionBlockedAsync += OnConnectionBlocked;
+                        _currentConnection.ConnectionUnblockedAsync += OnConnectionUnblocked;
+                        _currentConnection.RecoverySucceededAsync += OnRecoverySucceeded;
+                        _logger.LogInformation($"Rabbit Mq Connection Established. Endpoint: {_currentConnection?.Endpoint}");
+                        OnConnected();
+                        break;
+                    }
+                    catch (RabbitMQ.Client.Exceptions.BrokerUnreachableException e)
+                    {
+                        _connectionHealthy = false;
+                        if (retryCount >= maxRetryCount)
+                            throw;
+                        _logger.LogCritical($"{nameof(RabbitMqConnection)}.{nameof(GetConnection)} Endpoint: amqp://{_rabbitMqOptions.UserName}:{_rabbitMqOptions.Password}@{_rabbitMqOptions.Endpoint}/{_rabbitMqOptions.VHost} BrokerUnreachableException! {e.Message} {e.GetInnerMessage()} {e.StackTrace}");
+                    }
+                    retryCount++;
+                }
+                finally
+                {
+                    _connectionLock.Release();
+                }
+            } while (retryCount <= maxRetryCount);
+            return _currentConnection;
+        }
+
+        private async Task OnRecoverySucceeded(object sender, AsyncEventArgs e)
+        {
+            _logger.LogInformation("Rabbit Mq Connection Recovered. Endpoint:{Endpoint}", _currentConnection?.Endpoint);
+            OnConnected();
+        }
+
+        private async Task OnConnectionUnblocked(object sender, AsyncEventArgs e)
+        {
+            _connectionHealthy = true;
+            _logger.LogInformation($"Rabbit Mq Connection UnBlocked");
+        }
+
+        private async Task OnConnectionBlocked(object sender, ConnectionBlockedEventArgs e) =>
+            _logger.LogWarning($"Rabbit Mq Connection Blocked. Reason: {e.Reason}");
+
+        private async Task OnConnectionShutdown(object sender, ShutdownEventArgs e)
+        {
+            _logger.LogWarning($"Rabbit Mq Connection Shutdown. ReplyCode: {e.ReplyCode}, reply Text: {e.ReplyText}. Retrying another endpoint in the cluster");
+            OnDisconnected();
+        }
+
+        private void OnConnected()
+        {
+            _logger.LogInformation($"OnConnected Rabbit Mq Connection ConnectionName: {_rabbitMqOptions.ConnectionName}");
+            lock (_connectionEventsLock)
+            {
+                _connectionHealthy = true;
+                //publish the event up, so that host can wireup the new channels
+                Connected?.Invoke(this, new RabbitMqConnectedEventArgs());
+            }
+        }
+
+        private void OnDisconnected()
+        {
+            _logger.LogInformation($"OnDisconnected Rabbit Mq Connection {_rabbitMqOptions.ConnectionName}");
+            lock (_connectionEventsLock)
+            {
+                _connectionHealthy = false;
+                //publish the event up, so that host can dispose the existing channels
+                Disconnected?.Invoke(this, new RabbitMqDisconnectedEventArgs());
+            }
+        }
+
+        /// <inheritdoc/>
+        private async Task ClearConnection(string reason)
+        {
+            try
+            {
+                _logger.LogInformation($"Clearing Rabbit Mq Connection. Endpoint: {_currentConnection?.Endpoint.ToString()}, Reason: {reason}");
+                if (_currentConnection != null && _currentConnection.IsOpen)
+                    await _currentConnection.CloseAsync(200, reason, TimeSpan.FromMilliseconds(500));
+                _currentConnection = null;
+            }
+            catch (Exception e)
+            {
+                _logger.LogCritical($"{nameof(RabbitMqConnection)}.{nameof(ClearConnection)} Exception! {e.Message} {e.GetInnerMessage()} {e.StackTrace}");
+            }
+        }
+
+#if false
+        private ConnectionFactory GetRabbitMqConnectionFactory(RabbitMqConnectionConfiguration clusterConfiguration)
+        {
+            if (_connectionFactory != null)
+                return _connectionFactory;
+
+
+            lock (_connectionFactoryLock)
+            {
+                if (_connectionFactory != null)
+                    return _connectionFactory;
+                var factory = new ConnectionFactory()
+                {
+                    // This is required as the Vhost is lost using EndpointResolverFactory
+                    Uri = clusterConfiguration.RabbitMqUri,
+                    UserName = clusterConfiguration.UserName,
+                    Password = clusterConfiguration.Password
+                };
+                if (clusterConfiguration.ClusteredRabbitMqHosts != null && clusterConfiguration.ClusteredRabbitMqHosts.Any())
+                {
+                    _logger.LogInformation("Trying to create Rabbit Mq connection. ConnectionName:{ConnectionName}, UserName:{UserName}, ClusteredRabbitMqHosts:{ClusteredRabbitMqHosts}, Endpoint:{Endpoint}", 
+                        _configuration.ConnectionName,
+                        _configuration.UserName,
+                        string.Join(",", clusterConfiguration.ClusteredRabbitMqHosts),
+                        clusterConfiguration.RabbitMqUri.ToString());
+
+                    factory.HostName = null;
+                    //factory.EndpointResolverFactory = x => _endpointResolver;
+                }
+
+                var excecutingProcess = Process.GetCurrentProcess();
+                FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
+                string version = fvi.FileVersion;
+                factory.ClientProperties["client"] = "RabbitMq";
+                factory.ClientProperties["connected"] = DateTimeOffset.Now.ToString("R");
+                factory.ClientProperties["process_id"] = excecutingProcess?.Id;
+                factory.ClientProperties["process_name"] = excecutingProcess?.ProcessName;
+                // This will enable the subscriber to get notified of cancellation
+                // Use ful for the case of clustered queue issues
+                factory.ClientProperties["consumer_cancel_notify"] = "true";
+                factory.ClientProperties["connection_name"] = !string.IsNullOrWhiteSpace(_configuration.ConnectionName) ? _configuration.ConnectionName : $"{excecutingProcess?.ProcessName}_{version}";
+                factory.ClientProperties["assembly_version"] = version;
+                _connectionFactory = factory;
+                return factory;
+            }
+        }
+#endif
+        /// <inheritdoc/>
+        protected override void Disposing()
+        {
+            if (_connectionFactory != null)
+                _connectionFactory.AutomaticRecoveryEnabled = false;
+            Task.Run(async () => await ClearConnection($"{nameof(RabbitMqConnection)} disposing"));
+        }
+    }
+}
