@@ -39,12 +39,15 @@ class Program
 {
     static async Task Main(string[] args)
     {
+        // $ DOTNET_ENVIRONMENT=Development ./RabbitMq.Subscriber
+        string environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Development";
         string exchange = Environment.GetEnvironmentVariable("EXCHANGE");
         string envBindings = Environment.GetEnvironmentVariable("BINDINGS");
         IServiceCollection services = new ServiceCollection();
         IConfiguration config = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", false, true)
+            .AddJsonFile($"appsettings.{environment}.json", false, true)
             .AddJsonFile("appsettings.secret.json", true, true)
             .AddEnvironmentVariables()
             .Build();
