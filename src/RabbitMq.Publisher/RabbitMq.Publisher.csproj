@@ -15,6 +15,22 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.8" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.8" />
     <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.8" />
-    <None Include="appsettings.json" CopyToPublishDirectory="Always" />
+    <PackageReference Include="Elastic.CommonSchema.Serilog" Version="9.0.0" />
+    <PackageReference Include="Elastic.Serilog.Sinks" Version="9.0.0" />
+    <PackageReference Include="Serilog.Formatting.Compact" Version="3.0.0" />
+    <PackageReference Include="Serilog.Sinks.Async" Version="2.1.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Serilog.Enrichers.Thread" Version="4.0.0" />
+    <PackageReference Include="Serilog.Exceptions" Version="8.4.0" />
+    <PackageReference Include="Serilog.Expressions" Version="5.0.0" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
+    <PackageReference Include="Serilog.Settings.AppSettings" Version="3.0.0" />
+    <PackageReference Include="Serilog.Settings.Configuration" Version="10.0.0" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0" /> 
   </ItemGroup>
+  <ItemGroup>
+    <None Include="appsettings.json" CopyToOutputDirectory="Always" />
+    <None Include="appsettings.Development.json" CopyToOutputDirectory="Always" />
+  </ItemGroup>  
 </Project>
