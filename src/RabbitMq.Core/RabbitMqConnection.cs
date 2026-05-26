@@ -49,6 +49,7 @@ namespace RabbitMq.Core
             _connectionFactory.Password = _rabbitMqOptions.Password;
             _connectionFactory.VirtualHost = _rabbitMqOptions.VHost;
             _connectionFactory.HostName = _rabbitMqOptions.Endpoint;
+            _connectionFactory.Port = _rabbitMqOptions.Port;
         }
 
         /// <inheritdoc/>
