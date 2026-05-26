@@ -38,8 +38,9 @@ try
          services.AddTransient<IRabbitMqConnection, RabbitMqConnection>();
          services.AddHostedService<SubscriberWorker>()
              .AddSingleton<IConfiguration>(context.Configuration)
+             .AddSingleton<SharedState>()
              .AddSingleton<IRabbitMqSubscriberFactory<IMessage>, RabbitMqSubscriberFactory<IMessage>>()
-             .AddTransient<IRabbitMqConsumer<IMessage>, IMessage1AckNackConsumer>()
+             .AddTransient<IRabbitMqConsumer<IMessage>, Message1AckNackConsumer>()
              .Decorate<IRabbitMqConsumer<IMessage>, PostConsumerAckDecorator<IMessage>>()
              .AddTransient<IRabbitMqConnection, RabbitMqConnection>();
      })

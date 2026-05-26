@@ -11,6 +11,7 @@ public class SubscriberWorker : BackgroundService
 {
     private readonly ILogger<SubscriberWorker> _logger;
     private readonly IHostApplicationLifetime _hostAppLifetime;
+    private readonly SharedState _sharedState;
     protected readonly RabbitMQConfig _rabbitMqOptions;
     private readonly IRabbitMqSubscriberFactory<IMessage> _subscriberFactory;
     private readonly IRabbitMqSubscriber<IMessage> _subscriber;
@@ -20,10 +21,11 @@ public class SubscriberWorker : BackgroundService
     private readonly IRabbitMqConnection _connection;
     private bool _isConnected = false;
 
-    public SubscriberWorker(IHostApplicationLifetime hostApplicationLifetime, ILogger<SubscriberWorker> logger, IOptions<RabbitMQConfig> rabbitMqOptions, IRabbitMqSubscriberFactory<IMessage> subscriberFactory, IRabbitMqConnection connection, IRabbitMqConsumer<IMessage> consumer)
+    public SubscriberWorker(IHostApplicationLifetime hostApplicationLifetime, ILogger<SubscriberWorker> logger, IOptions<RabbitMQConfig> rabbitMqOptions, SharedState sharedState, IRabbitMqSubscriberFactory<IMessage> subscriberFactory, IRabbitMqConnection connection, IRabbitMqConsumer<IMessage> consumer)
     {
         _logger = logger;
         _hostAppLifetime = hostApplicationLifetime;
+        _sharedState = sharedState;
         _rabbitMqOptions = rabbitMqOptions.Value;
         _subscriberFactory = subscriberFactory;
         _consumer = consumer;
@@ -52,16 +54,17 @@ public class SubscriberWorker : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _logger.LogInformation($"Worker {nameof(SubscriberWorker)} starts at: {DateTimeOffset.Now}");
+        if (!_isConnected)
+        {
+            await _subscriber.Connect();
+            _isConnected = true;
+        }
         while (!stoppingToken.IsCancellationRequested)
             try
             {
-                _logger.LogInformation($"Worker {nameof(SubscriberWorker)} starts at: {DateTimeOffset.Now}");
-                if (!_isConnected)
-                {
-                    await _subscriber.Connect();
-                    _isConnected = true;
-                }
                 _logger.LogInformation(" [*] Waiting for logs...");
+                await _sharedState.SignalEvent.WaitAsync(stoppingToken);
             }
             catch (Exception ex)
             {
