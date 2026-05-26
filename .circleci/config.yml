@@ -37,14 +37,14 @@ jobs:
             MAJOR=$(cat publisher_version.txt | awk -F"." '{ print $1 }')
             MINOR=$(cat publisher_version.txt | awk -F"." '{ print $2 }')
             VERSION=$MAJOR.$MINOR.$CIRCLE_BUILD_NUM
-            docker build -t khteh/rabbitmq-publisher:latest -t khteh/rabbitmq-publisher:$VERSION src
+            docker build -t khteh/rabbitmq-publisher:latest -t khteh/rabbitmq-publisher:$VERSION src/RabbitMq.Publisher
       - run:
           name: Build Subscriber docker image
           command: |
             MAJOR=$(cat subscriber_version.txt | awk -F"." '{ print $1 }')
             MINOR=$(cat subscriber_version.txt | awk -F"." '{ print $2 }')
             VERSION=$MAJOR.$MINOR.$CIRCLE_BUILD_NUM
-            docker build -t khteh/rabbitmq-subscriber:latest -t khteh/rabbitmq-subscriber:$VERSION src
+            docker build -t khteh/rabbitmq-subscriber:latest -t khteh/rabbitmq-subscriber:$VERSION src/RabbitMq.Subscriber
       - run:
           name: Login to docker hub
           command: docker login -u $DOCKER_USER -p $DOCKER_PASS
