@@ -43,7 +43,7 @@ namespace RabbitMq.Core
             _rabbitMqOptions = rabbitMqOptions.Value;
             _logger = loggerFactory.CreateLogger<RabbitMqConnection>();
             _connectionFactory = new ConnectionFactory();
-            _logger.LogInformation($"{nameof(RabbitMqConnection)}: ConnectionName:{_rabbitMqOptions.ConnectionName}, UserName:{_rabbitMqOptions.UserName}, Password: {_rabbitMqOptions.Password}, Endpoint: {_rabbitMqOptions.Endpoint}, VHost: {_rabbitMqOptions.VHost}");
+            _logger.LogInformation($"{nameof(RabbitMqConnection)}: ConnectionName:{_rabbitMqOptions.ConnectionName}, UserName:{_rabbitMqOptions.UserName}, Password: {_rabbitMqOptions.Password}, Endpoint: {_rabbitMqOptions.Endpoint}, VHost: {_rabbitMqOptions.VHost}, Port: {_rabbitMqOptions.Port}");
             // "guest"/"guest" by default, limited to localhost connections
             _connectionFactory.UserName = _rabbitMqOptions.UserName;
             _connectionFactory.Password = _rabbitMqOptions.Password;
