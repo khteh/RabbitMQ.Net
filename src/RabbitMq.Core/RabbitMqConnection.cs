@@ -42,6 +42,13 @@ namespace RabbitMq.Core
             _loggerFactory = loggerFactory;
             _rabbitMqOptions = rabbitMqOptions.Value;
             _logger = loggerFactory.CreateLogger<RabbitMqConnection>();
+            _connectionFactory = new ConnectionFactory();
+            _logger.LogInformation($"{nameof(RabbitMqConnection)}: ConnectionName:{_rabbitMqOptions.ConnectionName}, UserName:{_rabbitMqOptions.UserName}, Password: {_rabbitMqOptions.Password}, Endpoint: {_rabbitMqOptions.Endpoint}, VHost: {_rabbitMqOptions.VHost}");
+            // "guest"/"guest" by default, limited to localhost connections
+            _connectionFactory.UserName = _rabbitMqOptions.UserName;
+            _connectionFactory.Password = _rabbitMqOptions.Password;
+            _connectionFactory.VirtualHost = _rabbitMqOptions.VHost;
+            _connectionFactory.HostName = _rabbitMqOptions.Endpoint;
         }
 
         /// <inheritdoc/>
@@ -102,9 +109,10 @@ namespace RabbitMq.Core
                         string version = fvi.FileVersion;
                         // Create a new Connection, we need to hook it up
                         //GetRabbitMqConnectionFactory(_configuration);
-                        _logger.LogInformation($"Trying to create Rabbit Mq connection. ConnectionName:{_rabbitMqOptions.ConnectionName}, UserName:{_rabbitMqOptions.UserName}, Endpoint: {_rabbitMqOptions.Endpoint}, VHost: {_rabbitMqOptions.VHost}");
-                        _connectionFactory = new ConnectionFactory() { Uri = new Uri($"amqp://{_rabbitMqOptions.UserName}:{_rabbitMqOptions.Password}@{_rabbitMqOptions.Endpoint}/{_rabbitMqOptions.VHost}") };
-                        _currentConnection = await _connectionFactory.CreateConnectionAsync(!string.IsNullOrWhiteSpace(_rabbitMqOptions.ConnectionName) ? _rabbitMqOptions.ConnectionName : $"{excecutingProcess?.ProcessName}_{version}");
+                        _currentConnection = await _connectionFactory.CreateConnectionAsync();
+                        //Uri uri = new Uri($"amqp://{_rabbitMqOptions.UserName}:{_rabbitMqOptions.Password}@{_rabbitMqOptions.Endpoint}/{_rabbitMqOptions.VHost}");
+                        //_connectionFactory = new ConnectionFactory() { uri, AutomaticRecoveryEnabled = true };
+                        //_currentConnection = await _connectionFactory.CreateConnectionAsync(!string.IsNullOrWhiteSpace(_rabbitMqOptions.ConnectionName) ? _rabbitMqOptions.ConnectionName : $"{excecutingProcess?.ProcessName}_{version}");
                         _currentConnection.ConnectionShutdownAsync += OnConnectionShutdown;
                         _currentConnection.ConnectionBlockedAsync += OnConnectionBlocked;
                         _currentConnection.ConnectionUnblockedAsync += OnConnectionUnblocked;
