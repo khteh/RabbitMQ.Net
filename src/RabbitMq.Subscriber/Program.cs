@@ -1,22 +1,12 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
 using RabbitMq.Core;
 using RabbitMq.Core.Consumer;
-using RabbitMq.Core.Extensions;
 using RabbitMq.Core.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Console;
+using RabbitMq.Subscriber;
 using Serilog;
 using Serilog.Events;
-using Serilog.Formatting.Elasticsearch;
-using RabbitMq.Subscriber;
-using Microsoft.Extensions.Hosting;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -51,21 +41,13 @@ try
              .AddSingleton<IRabbitMqSubscriberFactory<IMessage>, RabbitMqSubscriberFactory<IMessage>>()
              .AddTransient<IRabbitMqConsumer<IMessage>, IMessage1AckNackConsumer>()
              .Decorate<IRabbitMqConsumer<IMessage>, PostConsumerAckDecorator<IMessage>>()
-             .AddTransient<IRabbitMqConnection, RabbitMqConnection>()
-             .AddHealthChecks();
-     }).UseSerilog((ctx, config) =>
+             .AddTransient<IRabbitMqConnection, RabbitMqConnection>();
+     })
+     .UseSerilog((ctx, svc, config) =>
      {
-         config.ReadFrom.Configuration(ctx.Configuration);
+         config.ReadFrom.Configuration(ctx.Configuration).ReadFrom.Services(svc).Enrich.FromLogContext();
          if (ctx.HostingEnvironment.IsDevelopment() || ctx.HostingEnvironment.IsStaging())
              config.WriteTo.Console(LogEventLevel.Verbose, "{NewLine}{Timestamp:HH:mm:ss} [{Level}] ({CorrelationToken}) {Message}{NewLine}{Exception}");
-         else
-             config.WriteTo.Console(new ElasticsearchJsonFormatter());
-         LoggerConfiguration logConfig = new LoggerConfiguration().ReadFrom.Configuration(ctx.Configuration);
-         logConfig.WriteTo.Console(new ElasticsearchJsonFormatter());
-         // Create the logger
-         Log.Logger = logConfig.CreateLogger();
-         string connectionString = ctx.Configuration.GetConnectionString("Default");
-         Log.Debug($"Connection String: {connectionString}");
      });
     using IHost host = builder.Build();
     await host.RunAsync();
