@@ -2,7 +2,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36518.9
-MinimumVisualStudioVersion = 15.0.26124.0
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B69888BA-BDF0-4C97-9AD6-A74335DEE269}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RabbitMq.Core", "src\RabbitMq.Core\RabbitMq.Core.csproj", "{2E856082-439C-4632-BB87-80929631342A}"
