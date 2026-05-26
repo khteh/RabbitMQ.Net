@@ -53,7 +53,10 @@ class Program
             .Build();
         services.AddLogging(cfg => cfg.AddConsole().AddDebug());
         services.AddOptions();
-        services.Configure<RabbitMQConfig>(config.GetSection(nameof(RabbitMQConfig)));
+        IConfigurationSection rabbitMqConfigSection = config.GetSection(nameof(RabbitMQConfig));
+        rabbitMqConfigSection["UserName"] = config["UserName"];
+        rabbitMqConfigSection["Password"] = config["Password"];
+        services.Configure<RabbitMQConfig>(rabbitMqConfigSection);
         //RabbitMqSubscriberFactory<string> subscriberFactory = new RabbitMqSubscriberFactory<string>();
         services.AddTransient<IRabbitMqConsumer<IMessage>, IMessage1AckNackConsumer>();
         services.Decorate<IRabbitMqConsumer<IMessage>, PostConsumerAckDecorator<IMessage>>();

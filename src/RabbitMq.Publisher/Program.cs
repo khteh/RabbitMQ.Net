@@ -32,7 +32,10 @@ class Program
             .Build();
         services.AddLogging(i => i.AddConsole().AddDebug());
         services.AddOptions();
-        services.Configure<RabbitMQConfig>(config.GetSection(nameof(RabbitMQConfig)));
+        IConfigurationSection rabbitMqConfigSection = config.GetSection(nameof(RabbitMQConfig));
+        rabbitMqConfigSection["UserName"] = config["UserName"];
+        rabbitMqConfigSection["Password"] = config["Password"];
+        services.Configure<RabbitMQConfig>(rabbitMqConfigSection);
         services.AddTransient<IRabbitMqConnection, RabbitMqConnection>();
         QueueProperties queueProperties = new QueueProperties()
         {
