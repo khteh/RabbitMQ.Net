@@ -12,88 +12,69 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using static System.Console;
+using Serilog;
+using Serilog.Events;
+using Serilog.Formatting.Elasticsearch;
+using RabbitMq.Subscriber;
+using Microsoft.Extensions.Hosting;
 
-namespace RabbitMq.Subscriber;
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
 
-public class IMessage1AckNackConsumer : IRabbitMqConsumer<IMessage>
+try
 {
-    private readonly ILogger<IMessage1AckNackConsumer> _logger;
-    public IMessage1AckNackConsumer(ILogger<IMessage1AckNackConsumer> logger) => _logger = logger;
-    public async Task Consume(IRabbitMqConsumeContext<IMessage> consumeContext)
-    {
-        try
-        {
-            await Task.Run(() => { });
-            //_context.IncrementSuccessCount();
-            WriteLine($"{nameof(IMessage1AckNackConsumer)} [x] Received {consumeContext.RoutingKey}: {consumeContext.Message.Message} @ {consumeContext.Message.Timestamp}");
-        }
-        catch (Exception e)
-        {
-            //_context.SetCompleted();
-            _logger.LogCritical($"{nameof(IMessage1AckNackConsumer)} Exception! {e.Message} {e.GetInnerMessage()} {e.StackTrace}");
-        }
-    }
+    IHostBuilder builder = Host.CreateDefaultBuilder(args).ConfigureAppConfiguration((hostingContext, configuration) =>
+     {
+         configuration.Sources.Clear();
+         IHostEnvironment env = hostingContext.HostingEnvironment;
+         IConfiguration config = configuration.AddJsonFile("appsettings.json", false, true)
+                     .AddJsonFile($"appsettings.{env.EnvironmentName}.json", true, true) // Development only has one file
+                     .AddJsonFile($"appsettings.CriticalSubscriber.{env.EnvironmentName}.json", true, true)
+                     .AddJsonFile($"appsettings.KernSubscriber.{env.EnvironmentName}.json", true, true)
+                     .AddEnvironmentVariables()
+                     .AddCommandLine(args)
+                     .Build();
+         Log.Information($"env: {env.EnvironmentName}");
+     })
+     .ConfigureServices((context, services) =>
+     {
+         services.AddOptions();
+         IConfigurationSection rabbitMqConfigSection = context.Configuration.GetSection(nameof(RabbitMQConfig));
+         rabbitMqConfigSection["UserName"] = context.Configuration["UserName"];
+         rabbitMqConfigSection["Password"] = context.Configuration["Password"];
+         Log.Information($"ConnectionName: {rabbitMqConfigSection["ConnectionName"]}, Endpoint: {rabbitMqConfigSection["Endpoint"]}, VHost: {rabbitMqConfigSection["VHost"]}");
+         services.Configure<RabbitMQConfig>(rabbitMqConfigSection);
+         services.AddTransient<IRabbitMqConnection, RabbitMqConnection>();
+         services.AddHostedService<SubscriberWorker>()
+             .AddSingleton<IConfiguration>(context.Configuration)
+             .AddSingleton<IRabbitMqSubscriberFactory<IMessage>, RabbitMqSubscriberFactory<IMessage>>()
+             .AddTransient<IRabbitMqConsumer<IMessage>, IMessage1AckNackConsumer>()
+             .Decorate<IRabbitMqConsumer<IMessage>, PostConsumerAckDecorator<IMessage>>()
+             .AddTransient<IRabbitMqConnection, RabbitMqConnection>()
+             .AddHealthChecks();
+     }).UseSerilog((ctx, config) =>
+     {
+         config.ReadFrom.Configuration(ctx.Configuration);
+         if (ctx.HostingEnvironment.IsDevelopment() || ctx.HostingEnvironment.IsStaging())
+             config.WriteTo.Console(LogEventLevel.Verbose, "{NewLine}{Timestamp:HH:mm:ss} [{Level}] ({CorrelationToken}) {Message}{NewLine}{Exception}");
+         else
+             config.WriteTo.Console(new ElasticsearchJsonFormatter());
+         LoggerConfiguration logConfig = new LoggerConfiguration().ReadFrom.Configuration(ctx.Configuration);
+         logConfig.WriteTo.Console(new ElasticsearchJsonFormatter());
+         // Create the logger
+         Log.Logger = logConfig.CreateLogger();
+         string connectionString = ctx.Configuration.GetConnectionString("Default");
+         Log.Debug($"Connection String: {connectionString}");
+     });
+    using IHost host = builder.Build();
+    await host.RunAsync();
 }
-
-class Program
+catch (Exception ex)
 {
-    static async Task Main(string[] args)
-    {
-        // $ DOTNET_ENVIRONMENT=Development ./RabbitMq.Subscriber
-        string environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Development";
-        string exchange = Environment.GetEnvironmentVariable("EXCHANGE");
-        string envBindings = Environment.GetEnvironmentVariable("BINDINGS");
-        string userName = Environment.GetEnvironmentVariable("UserName");
-        string password = Environment.GetEnvironmentVariable("Password");
-        IServiceCollection services = new ServiceCollection();
-        IConfiguration config = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", false, true)
-            .AddJsonFile($"appsettings.{environment}.json", false, true)
-            .AddJsonFile("appsettings.secret.json", true, true)
-            .AddEnvironmentVariables()
-            .Build();
-        services.AddLogging(cfg => cfg.AddConsole().AddDebug());
-        services.AddOptions();
-        IConfigurationSection rabbitMqConfigSection = config.GetSection(nameof(RabbitMQConfig));
-        rabbitMqConfigSection["UserName"] = userName ?? config["UserName"];
-        rabbitMqConfigSection["Password"] = password ?? config["Password"];
-        services.Configure<RabbitMQConfig>(rabbitMqConfigSection);
-        //RabbitMqSubscriberFactory<string> subscriberFactory = new RabbitMqSubscriberFactory<string>();
-        services.AddTransient<IRabbitMqConsumer<IMessage>, IMessage1AckNackConsumer>();
-        services.Decorate<IRabbitMqConsumer<IMessage>, PostConsumerAckDecorator<IMessage>>();
-        services.AddTransient<IRabbitMqConnection, RabbitMqConnection>();
-        QueueProperties queueProperties = new QueueProperties()
-        {
-            Temporary = true,
-            Durable = true,
-            Exclusive = true,
-            AutoDelete = true,
-            Name = null
-        };
-        List<string> bindings = !string.IsNullOrEmpty(envBindings) ? envBindings.Split(",").ToList() : args.ToList();
-        SubscriberProperties subscriberProperties = new SubscriberProperties()
-        {
-            Exchange = string.IsNullOrEmpty(exchange) ? "topic_logs" : exchange,
-            ExchangeType = "topic",
-            Bindings = bindings
-        };
-        services.AddSingleton<IRabbitMqSubscriberFactory<IMessage>, RabbitMqSubscriberFactory<IMessage>>();
-        IServiceProvider serviceProvider = services.BuildServiceProvider();
-        ILogger<Program> logger = serviceProvider.GetRequiredService<ILogger<Program>>();
-        logger.LogInformation($"UserName: {userName} {config["UserName"]} {rabbitMqConfigSection["UserName"]}, Password: {password} {config["Password"]} {rabbitMqConfigSection["Password"]}");
-        logger.LogInformation($"ConnectionName: {rabbitMqConfigSection["ConnectionName"]}, Endpoint: {rabbitMqConfigSection["Endpoint"]}, VHost: {rabbitMqConfigSection["VHost"]}");
-        StringBuilder sb = new StringBuilder();
-        foreach (string i in bindings)
-            sb.Append($"{i}, ");
-        logger.LogInformation($"Bindings: {sb.ToString()}");
-        IRabbitMqSubscriberFactory<IMessage> subscriberFactory = serviceProvider.GetRequiredService<IRabbitMqSubscriberFactory<IMessage>>();
-        using IRabbitMqSubscriber<IMessage> subscriber = subscriberFactory.GetRabbitMqSubscriber(subscriberProperties, queueProperties,
-            true, serviceProvider.GetRequiredService<IRabbitMqConnection>(),
-            serviceProvider.GetRequiredService<IRabbitMqConsumer<IMessage>>(), null);
-        await subscriber.Connect();
-        logger.LogInformation(" [*] Waiting for logs...");
-        logger.LogInformation("Press ENTER to exit:");
-        while (true) ;
-    }
+    Log.Fatal(ex, "Application start-up failed");
+}
+finally
+{
+    Log.CloseAndFlush();
 }

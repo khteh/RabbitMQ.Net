@@ -12,10 +12,8 @@ namespace RabbitMq.Core.Consumer
         /// Instance of PreConsumerAckDecorator
         /// </summary>
         /// <param name="decorated">Decorated Consumer</param>
-        public PostConsumerAckDecorator(IRabbitMqConsumer<TMessage> decorated)
-        {
+        public PostConsumerAckDecorator(IRabbitMqConsumer<TMessage> decorated) =>
             _decorated = decorated;
-        }
 
         /// <inheritdoc/>
         public async Task Consume(IRabbitMqConsumeContext<TMessage> consumeContext)

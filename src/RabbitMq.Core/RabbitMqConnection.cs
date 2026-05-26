@@ -104,9 +104,6 @@ namespace RabbitMq.Core
                     ClearConnection($"{nameof(RabbitMqConnection)} reconnecting");
                     try
                     {
-                        var excecutingProcess = Process.GetCurrentProcess();
-                        FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
-                        string version = fvi.FileVersion;
                         // Create a new Connection, we need to hook it up
                         //GetRabbitMqConnectionFactory(_configuration);
                         _currentConnection = await _connectionFactory.CreateConnectionAsync();
