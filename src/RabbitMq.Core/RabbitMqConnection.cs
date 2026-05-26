@@ -25,7 +25,6 @@ namespace RabbitMq.Core
         private bool _connectionHealthy = true;
         private readonly ILogger<RabbitMqConnection> _logger;
         private ConnectionFactory _connectionFactory;
-        private object _connectionFactoryLock = new object();
         protected readonly RabbitMQConfig _rabbitMqOptions;
         /// <inheritdoc/>
         public event EventHandler<RabbitMqConnectedEventArgs> Connected;
@@ -103,6 +102,7 @@ namespace RabbitMq.Core
                         string version = fvi.FileVersion;
                         // Create a new Connection, we need to hook it up
                         //GetRabbitMqConnectionFactory(_configuration);
+                        _logger.LogInformation($"Trying to create Rabbit Mq connection. ConnectionName:{_rabbitMqOptions.ConnectionName}, UserName:{_rabbitMqOptions.UserName}, Endpoint: {_rabbitMqOptions.Endpoint}, VHost: {_rabbitMqOptions.VHost}");
                         _connectionFactory = new ConnectionFactory() { Uri = new Uri($"amqp://{_rabbitMqOptions.UserName}:{_rabbitMqOptions.Password}@{_rabbitMqOptions.Endpoint}/{_rabbitMqOptions.VHost}") };
                         _currentConnection = await _connectionFactory.CreateConnectionAsync(!string.IsNullOrWhiteSpace(_rabbitMqOptions.ConnectionName) ? _rabbitMqOptions.ConnectionName : $"{excecutingProcess?.ProcessName}_{version}");
                         _currentConnection.ConnectionShutdownAsync += OnConnectionShutdown;

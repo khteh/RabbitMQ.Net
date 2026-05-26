@@ -43,6 +43,8 @@ class Program
         string environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Development";
         string exchange = Environment.GetEnvironmentVariable("EXCHANGE");
         string envBindings = Environment.GetEnvironmentVariable("BINDINGS");
+        string userName = Environment.GetEnvironmentVariable("UserName");
+        string password = Environment.GetEnvironmentVariable("Password");
         IServiceCollection services = new ServiceCollection();
         IConfiguration config = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
@@ -54,8 +56,8 @@ class Program
         services.AddLogging(cfg => cfg.AddConsole().AddDebug());
         services.AddOptions();
         IConfigurationSection rabbitMqConfigSection = config.GetSection(nameof(RabbitMQConfig));
-        rabbitMqConfigSection["UserName"] = config["UserName"];
-        rabbitMqConfigSection["Password"] = config["Password"];
+        rabbitMqConfigSection["UserName"] = userName ?? config["UserName"];
+        rabbitMqConfigSection["Password"] = password ?? config["Password"];
         services.Configure<RabbitMQConfig>(rabbitMqConfigSection);
         //RabbitMqSubscriberFactory<string> subscriberFactory = new RabbitMqSubscriberFactory<string>();
         services.AddTransient<IRabbitMqConsumer<IMessage>, IMessage1AckNackConsumer>();
@@ -79,19 +81,19 @@ class Program
         services.AddSingleton<IRabbitMqSubscriberFactory<IMessage>, RabbitMqSubscriberFactory<IMessage>>();
         IServiceProvider serviceProvider = services.BuildServiceProvider();
         ILogger<Program> logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogInformation($"UserName: {userName} {config["UserName"]} {rabbitMqConfigSection["UserName"]}, Password: {password} {config["Password"]} {rabbitMqConfigSection["Password"]}");
+        logger.LogInformation($"ConnectionName: {rabbitMqConfigSection["ConnectionName"]}, Endpoint: {rabbitMqConfigSection["Endpoint"]}, VHost: {rabbitMqConfigSection["VHost"]}");
         StringBuilder sb = new StringBuilder();
         foreach (string i in bindings)
             sb.Append($"{i}, ");
         logger.LogInformation($"Bindings: {sb.ToString()}");
         IRabbitMqSubscriberFactory<IMessage> subscriberFactory = serviceProvider.GetRequiredService<IRabbitMqSubscriberFactory<IMessage>>();
-        using (IRabbitMqSubscriber<IMessage> subscriber = subscriberFactory.GetRabbitMqSubscriber(subscriberProperties, queueProperties,
+        using IRabbitMqSubscriber<IMessage> subscriber = subscriberFactory.GetRabbitMqSubscriber(subscriberProperties, queueProperties,
             true, serviceProvider.GetRequiredService<IRabbitMqConnection>(),
-            serviceProvider.GetRequiredService<IRabbitMqConsumer<IMessage>>(), null))
-        {
-            await subscriber.Connect();
-            logger.LogInformation(" [*] Waiting for logs...");
-            logger.LogInformation("Press ENTER to exit:");
-            while (true) ;
-        }
+            serviceProvider.GetRequiredService<IRabbitMqConsumer<IMessage>>(), null);
+        await subscriber.Connect();
+        logger.LogInformation(" [*] Waiting for logs...");
+        logger.LogInformation("Press ENTER to exit:");
+        while (true) ;
     }
 }
