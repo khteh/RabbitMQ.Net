@@ -15,10 +15,10 @@ namespace RabbitMq.Core.Consumer
         private readonly ILoggerFactory _loggerFactory;
         private readonly ILogger<RabbitMqSubscriberFactory<TMessage>> _logger;
         private Func<PolicyBuilder, AsyncRetryPolicy> _subscribeRetryPolicyAction;
-        public RabbitMqSubscriberFactory(ILoggerFactory loggerFactory)
+        public RabbitMqSubscriberFactory(ILoggerFactory loggerFactory, ILogger<RabbitMqSubscriberFactory<TMessage>> logger)
         {
             _loggerFactory = loggerFactory;
-            _logger = _loggerFactory.CreateLogger<RabbitMqSubscriberFactory<TMessage>>();
+            _logger = logger;
             //_subscribeRetryPolicyAction = (policy) => policy.WaitAndRetryAsync(6, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)) + TimeSpan.FromMilliseconds(new Random().Next(0, 100)) );
             _subscribeRetryPolicyAction = (policy) => policy.WaitAndRetryAsync(new[]
                                                {

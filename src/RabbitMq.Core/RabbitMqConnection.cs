@@ -17,20 +17,19 @@ namespace RabbitMq.Core
 {
     public class RabbitMqConnection : DisposableObject, IRabbitMqConnection
     {
-        //RabbitMqConnectionConfiguration _configuration;
         private static readonly SemaphoreSlim _connectionLock = new SemaphoreSlim(1, 1);
         private readonly object _connectionEventsLock = new object();
         private IConnection _currentConnection { get; set; }
 
         private bool _connectionHealthy = true;
         private readonly ILogger<RabbitMqConnection> _logger;
+        private readonly ILoggerFactory _loggerFactory;
         private ConnectionFactory _connectionFactory;
         protected readonly RabbitMQConfig _rabbitMqOptions;
         /// <inheritdoc/>
         public event EventHandler<RabbitMqConnectedEventArgs> Connected;
         /// <inheritdoc/>
         public event EventHandler<RabbitMqDisconnectedEventArgs> Disconnected;
-        private readonly ILoggerFactory _loggerFactory;
         private IChannel _channel;
 
         /// <summary>
@@ -38,21 +37,27 @@ namespace RabbitMq.Core
         /// </summary>
         /// <param name="logger">Logger Instance</param>
         /// <param name="connectionConfigurations">List of connections</param>
-        public RabbitMqConnection(ILoggerFactory loggerFactory, IOptions<RabbitMQConfig> rabbitMqOptions)
+        public RabbitMqConnection(ILoggerFactory loggerFactory, ILogger<RabbitMqConnection> logger, IOptions<RabbitMQConfig> rabbitMqOptions)
         {
-            _loggerFactory = loggerFactory;
             _rabbitMqOptions = rabbitMqOptions.Value;
-            _logger = loggerFactory.CreateLogger<RabbitMqConnection>();
-            _connectionFactory = new ConnectionFactory();
+            _logger = logger;
+            _loggerFactory = loggerFactory;
             _logger.LogInformation($"{nameof(RabbitMqConnection)}: ConnectionName:{_rabbitMqOptions.ConnectionName}, UserName:{_rabbitMqOptions.UserName}, Password: {_rabbitMqOptions.Password}, Endpoint: {_rabbitMqOptions.Endpoint}, VHost: {_rabbitMqOptions.VHost}, Port: {_rabbitMqOptions.Port}, Exchange: {_rabbitMqOptions.Exchange}, Bindings: {_rabbitMqOptions.Bindings}, RoutingKey: {_rabbitMqOptions.RoutingKey}, Queue: {_rabbitMqOptions.QueueName}");
-            // This will enable the subscriber to get notified of cancellation
-            // Use ful for the case of clustered queue issues
-            // "guest"/"guest" by default, limited to localhost connections
-            _connectionFactory.UserName = _rabbitMqOptions.UserName;
-            _connectionFactory.Password = _rabbitMqOptions.Password;
-            _connectionFactory.VirtualHost = _rabbitMqOptions.VHost;
-            _connectionFactory.HostName = _rabbitMqOptions.Endpoint;
-            _connectionFactory.Port = _rabbitMqOptions.Port;
+            _connectionFactory = new ConnectionFactory()
+            {
+                // This will enable the subscriber to get notified of cancellation
+                // Use ful for the case of clustered queue issues
+                // "guest"/"guest" by default, limited to localhost connections
+                UserName = _rabbitMqOptions.UserName,
+                Password = _rabbitMqOptions.Password,
+                VirtualHost = _rabbitMqOptions.VHost,
+                HostName = _rabbitMqOptions.Endpoint,
+                Port = _rabbitMqOptions.Port
+            };
+            _connectionFactory.Ssl.Enabled = true;
+            _connectionFactory.Ssl.ServerName = "*.rabbitmq-nodes.default.svc.cluster.local,rabbitmq.default.svc.cluster.local"; // This MUST match the Subject Alternative Name (SAN) or CN on the peer's (server's) leaf certificate,
+            _connectionFactory.Ssl.CertPath = "/tmp/localhost.pfx";
+            _connectionFactory.Ssl.CertPassphrase = _rabbitMqOptions.Password;
         }
 
         /// <inheritdoc/>
