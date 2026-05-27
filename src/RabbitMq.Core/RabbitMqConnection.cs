@@ -68,6 +68,7 @@ namespace RabbitMq.Core
             IConnection rabbitMqConnection = await GetConnection();
             if (IsDisposed || IsDisposing)
                 throw new InvalidOperationException($"Channel is already Disposed");
+            _logger.LogInformation($"{nameof(RabbitMqConnection)}.{nameof(CreateChannel)} Exchange: {exchange}, type: {type}, routingKey: {routingKey}, {(queueProperties.Temporary ? "Temporary" : queueProperties.Name)}");
             //return new RabbitMqChannel(_loggerFactory.CreateLogger<RabbitMqChannel>(), rabbitMqConnection.CreateModel(), exchange, type, properties);
             _channel = await rabbitMqConnection.CreateChannelAsync();
             await _channel.ExchangeDeclareAsync(exchange, type);
@@ -98,10 +99,8 @@ namespace RabbitMq.Core
         private async Task<IConnection> GetConnection()
         {
             if (IsDisposing || IsDisposed)
-                throw new InvalidOperationException($"The Connection has been already disposed");
-            var maxRetryCount = 3;
-            var retryCount = 0;
-            do
+                throw new InvalidOperationException($"{nameof(RabbitMqConnection)}.{nameof(GetConnection)} The Connection has been already disposed");
+            for (int i = 0, maxRetryCount = 3; i < maxRetryCount; i++)
             {
                 // if the Existing Connection is healthy
                 if (IsConnected())
@@ -114,7 +113,7 @@ namespace RabbitMq.Core
                         return _currentConnection;
                     // Make sure we dispose the existing connection
                     // Hence using a different lock for the events
-                    ClearConnection($"{nameof(RabbitMqConnection)} reconnecting");
+                    ClearConnection($"{nameof(RabbitMqConnection)}.{nameof(GetConnection)} reconnecting");
                     try
                     {
                         // Create a new Connection, we need to hook it up
@@ -137,17 +136,23 @@ namespace RabbitMq.Core
                     catch (RabbitMQ.Client.Exceptions.BrokerUnreachableException e)
                     {
                         _connectionHealthy = false;
-                        if (retryCount >= maxRetryCount)
+                        if (i >= maxRetryCount)
                             throw;
                         _logger.LogCritical($"{nameof(RabbitMqConnection)}.{nameof(GetConnection)} Endpoint: amqp://{_rabbitMqOptions.UserName}:{_rabbitMqOptions.Password}@{_rabbitMqOptions.Endpoint}/{_rabbitMqOptions.VHost} BrokerUnreachableException! {e.Message} {e.GetInnerMessage()} {e.StackTrace}");
                     }
-                    retryCount++;
+                    catch (Exception e)
+                    {
+                        _connectionHealthy = false;
+                        if (i >= maxRetryCount)
+                            throw;
+                        _logger.LogCritical($"{nameof(RabbitMqConnection)}.{nameof(GetConnection)} Endpoint: amqp://{_rabbitMqOptions.UserName}:{_rabbitMqOptions.Password}@{_rabbitMqOptions.Endpoint}/{_rabbitMqOptions.VHost} Exception! {e.Message} {e.GetInnerMessage()} {e.StackTrace}");
+                    }
                 }
                 finally
                 {
                     _connectionLock.Release();
                 }
-            } while (retryCount <= maxRetryCount);
+            }
             return _currentConnection;
         }
 
