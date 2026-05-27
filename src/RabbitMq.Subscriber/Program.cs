@@ -7,11 +7,9 @@ using RabbitMq.Core.Interfaces;
 using RabbitMq.Subscriber;
 using Serilog;
 using Serilog.Events;
-
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateBootstrapLogger();
-
 try
 {
     IHostBuilder builder = Host.CreateDefaultBuilder(args).ConfigureAppConfiguration((hostingContext, configuration) =>
@@ -31,7 +29,6 @@ try
          IConfigurationSection rabbitMqConfigSection = context.Configuration.GetSection(nameof(RabbitMQConfig));
          rabbitMqConfigSection["UserName"] = context.Configuration["UserName"];
          rabbitMqConfigSection["Password"] = context.Configuration["Password"];
-         Log.Information($"ConnectionName: {rabbitMqConfigSection["ConnectionName"]}, Endpoint: {rabbitMqConfigSection["Endpoint"]}, VHost: {rabbitMqConfigSection["VHost"]}");
          services.Configure<RabbitMQConfig>(rabbitMqConfigSection);
          services.AddTransient<IRabbitMqConnection, RabbitMqConnection>();
          services.AddHostedService<SubscriberWorker>()

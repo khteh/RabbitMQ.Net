@@ -35,6 +35,7 @@ class Program
         IConfigurationSection rabbitMqConfigSection = config.GetSection(nameof(RabbitMQConfig));
         rabbitMqConfigSection["UserName"] = config["UserName"];
         rabbitMqConfigSection["Password"] = config["Password"];
+        WriteLine($"ConnectionName: {rabbitMqConfigSection["ConnectionName"]}, Endpoint: {rabbitMqConfigSection["Endpoint"]}, VHost: {rabbitMqConfigSection["VHost"]}");
         services.Configure<RabbitMQConfig>(rabbitMqConfigSection);
         services.AddTransient<IRabbitMqConnection, RabbitMqConnection>();
         QueueProperties queueProperties = new QueueProperties()
