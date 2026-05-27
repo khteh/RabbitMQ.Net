@@ -49,7 +49,7 @@ public class PublisherWorker : BackgroundService
         _logger.LogInformation($"Worker {nameof(PublisherWorker)} starts at: {DateTimeOffset.Now}");
         try
         {
-            _logger.LogInformation($"ConnectionName: {_rabbitMqOptions.ConnectionName}, Endpoint: {_rabbitMqOptions.Endpoint}, Port: {_rabbitMqOptions.Port}, VHost: {_rabbitMqOptions.VHost}, Message: {_message.Message} @ {_message.Timestamp}, Exchange: {_rabbitMqOptions.Exchange}, RoutingKey: {_rabbitMqOptions.RoutingKey}, Queue: {_rabbitMqOptions.QueueName}");
+            _logger.LogInformation($"{nameof(PublisherWorker)}.{nameof(ExecuteAsync)} ConnectionName: {_rabbitMqOptions.ConnectionName}, Endpoint: {_rabbitMqOptions.Endpoint}, Port: {_rabbitMqOptions.Port}, VHost: {_rabbitMqOptions.VHost}, Message: {_message.Message} @ {_message.Timestamp}, Exchange: {_rabbitMqOptions.Exchange}, RoutingKey: {_rabbitMqOptions.RoutingKey}, Queue: {_rabbitMqOptions.QueueName}");
             _channel = await _connection.CreateChannel(string.IsNullOrEmpty(_rabbitMqOptions.Exchange) ? "topic_logs" : _rabbitMqOptions.Exchange, "topic", _queueProperties);
             _logger.LogInformation($"");
             /* This will initially block until a consumer calls Release() after processing a message, increasing the count by 1.

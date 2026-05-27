@@ -29,7 +29,6 @@ try
          IConfigurationSection rabbitMqConfigSection = context.Configuration.GetSection(nameof(RabbitMQConfig));
          rabbitMqConfigSection["UserName"] = context.Configuration["UserName"];
          rabbitMqConfigSection["Password"] = context.Configuration["Password"];
-         Log.Information($"ConnectionName: {rabbitMqConfigSection["ConnectionName"]}, Endpoint: {rabbitMqConfigSection["Endpoint"]}, Port: {rabbitMqConfigSection["Port"]}, VHost: {rabbitMqConfigSection["VHost"]}, Message: {rabbitMqConfigSection["MESSAGE"]}, Exchange: {rabbitMqConfigSection["Exchange"]}, RoutingKey: {rabbitMqConfigSection["RoutingKey"]}");
          services.Configure<RabbitMQConfig>(rabbitMqConfigSection);
          services.AddHostedService<PublisherWorker>()
              .AddSingleton<IConfiguration>(context.Configuration)
