@@ -64,6 +64,9 @@ public class SubscriberWorker : BackgroundService
             try
             {
                 _logger.LogInformation(" [*] Waiting for logs...");
+                /* This will initially block until a consumer calls Release() after processing a message, increasing the count by 1.
+                * The following call will not block because it the count is 1. Then it will enters the semaphore with the count decremented by one, continue with the while loop.and call WaitAsync again, which will block.
+                */
                 await _sharedState.SignalEvent.WaitAsync(stoppingToken);
             }
             catch (Exception ex)
@@ -78,5 +81,13 @@ public class SubscriberWorker : BackgroundService
         }
         _logger.LogInformation($"Worker {nameof(SubscriberWorker)}.{nameof(ExecuteAsync)} finishes at: {DateTimeOffset.Now}");
         //_hostAppLifetime.StopApplication();
+    }
+    public override async Task StopAsync(CancellationToken cancellationToken)
+    {
+        // Clean up connections gracefully
+        _subscriber?.Dispose();
+        _connection?.Dispose();
+        _sharedState?.Dispose();
+        await base.StopAsync(cancellationToken);
     }
 }

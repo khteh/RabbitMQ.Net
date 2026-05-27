@@ -19,9 +19,7 @@ try
          configuration.Sources.Clear();
          IHostEnvironment env = hostingContext.HostingEnvironment;
          IConfiguration config = configuration.AddJsonFile("appsettings.json", false, true)
-                     .AddJsonFile($"appsettings.{env.EnvironmentName}.json", true, true) // Development only has one file
-                     .AddJsonFile($"appsettings.CriticalSubscriber.{env.EnvironmentName}.json", true, true)
-                     .AddJsonFile($"appsettings.KernSubscriber.{env.EnvironmentName}.json", true, true)
+                     .AddJsonFile($"appsettings.{env.EnvironmentName}.json", false, true)
                      .AddEnvironmentVariables()
                      .AddCommandLine(args)
                      .Build();
