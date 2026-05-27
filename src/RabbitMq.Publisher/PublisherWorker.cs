@@ -50,7 +50,7 @@ public class PublisherWorker : BackgroundService
         try
         {
             _logger.LogInformation($"{nameof(PublisherWorker)}.{nameof(ExecuteAsync)} ConnectionName: {_rabbitMqOptions.ConnectionName}, Endpoint: {_rabbitMqOptions.Endpoint}, Port: {_rabbitMqOptions.Port}, VHost: {_rabbitMqOptions.VHost}, Message: {_message.Message} @ {_message.Timestamp}, Exchange: {_rabbitMqOptions.Exchange}, RoutingKey: {_rabbitMqOptions.RoutingKey}, Queue: {_rabbitMqOptions.QueueName}");
-            _channel = await _connection.CreateChannel(string.IsNullOrEmpty(_rabbitMqOptions.Exchange) ? "topic_logs" : _rabbitMqOptions.Exchange, "topic", _queueProperties);
+            _channel = await _connection.CreateChannel(string.IsNullOrEmpty(_rabbitMqOptions.Exchange) ? "topic_logs" : _rabbitMqOptions.Exchange, "topic", _rabbitMqOptions.RoutingKey, _queueProperties);
             _logger.LogInformation($"");
             /* This will initially block until a consumer calls Release() after processing a message, increasing the count by 1.
             * The following call will not block because it the count is 1. Then it will enters the semaphore with the count decremented by one, continue with the while loop.and call WaitAsync again, which will block.
@@ -66,7 +66,7 @@ public class PublisherWorker : BackgroundService
         }
         catch (Exception ex)
         {
-            _logger.LogCritical($"{nameof(PublisherWorker)}.{nameof(ExecuteAsync)} Exception ! {ex.Message}");
+            _logger.LogCritical($"{nameof(PublisherWorker)}.{nameof(ExecuteAsync)} Exception! {ex.Message}");
         }
         finally
         {

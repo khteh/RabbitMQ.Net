@@ -12,7 +12,7 @@ namespace RabbitMq.Core.Interfaces
         /// Creates a Rabbit Mq Channel
         /// </summary>
         /// <returns>Rabbit Mq Channel</returns>
-        Task<IRabbitMqChannel> CreateChannel(string exchange, string type, IQueueProperties properties);
+        Task<IRabbitMqChannel> CreateChannel(string exchange, string type, string routingKey, IQueueProperties properties);
 
         /// <summary>
         /// Connects to the RabbitMq Endpoint

@@ -98,14 +98,13 @@ public sealed class RabbitMqSubscriber<TMessage> : DisposableObject, IRabbitMqSu
         base.Disposing();
     }
 
-
     private async Task Subscribe()
     {
         _logger.LogInformation($"Trying to subscribe to Exchange: {_properties.Exchange}, ExchangeType: {_properties.ExchangeType}, Queue: {_queueProperties.Name}, autoAck {_autoAck}, {_properties.Bindings.Count()} bindings {(_properties.Bindings.Count() == 1 ? _properties.Bindings.First() : string.Empty)}");
         try
         {
             DisposeChannel();
-            _channel = await _connection.CreateChannel(_properties.Exchange, _properties.ExchangeType, _queueProperties);
+            _channel = await _connection.CreateChannel(_properties.Exchange, _properties.ExchangeType, string.Empty, _queueProperties);
             _consumerTag = await _channel.Subscribe(_autoAck, OnConsume, OnSubscriberDisconnected, _properties.Bindings);
             // Only List on disconnected if we are able to subscribe to it
             _channel.Disconnected += OnChannelDisconnected;

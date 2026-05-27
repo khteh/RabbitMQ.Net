@@ -31,6 +31,7 @@ namespace RabbitMq.Core
         /// <inheritdoc/>
         public event EventHandler<RabbitMqDisconnectedEventArgs> Disconnected;
         private readonly ILoggerFactory _loggerFactory;
+        private IChannel _channel;
 
         /// <summary>
         /// Creates an instance of the Connection Configurations 
@@ -55,29 +56,31 @@ namespace RabbitMq.Core
         }
 
         /// <inheritdoc/>
-        public async Task<IRabbitMqChannel> CreateChannel(string exchange, string type, IQueueProperties properties)
+        public async Task<IRabbitMqChannel> CreateChannel(string exchange, string type, string routingKey, IQueueProperties queueProperties)
         {
             IConnection rabbitMqConnection = await GetConnection();
             if (IsDisposed || IsDisposing)
                 throw new InvalidOperationException($"Channel is already Disposed");
             //return new RabbitMqChannel(_loggerFactory.CreateLogger<RabbitMqChannel>(), rabbitMqConnection.CreateModel(), exchange, type, properties);
-            IChannel channel = await rabbitMqConnection.CreateChannelAsync();
-            await channel.ExchangeDeclareAsync(exchange, type);
-            string queueName = properties.Name;
-            if (properties.Temporary)
+            _channel = await rabbitMqConnection.CreateChannelAsync();
+            await _channel.ExchangeDeclareAsync(exchange, type);
+            string queueName = queueProperties.Name;
+            if (queueProperties.Temporary)
             {
-                var result = await channel.QueueDeclareAsync(string.Empty);
+                var result = await _channel.QueueDeclareAsync(string.Empty);
                 queueName = result.QueueName;
             }
-            else if (!string.IsNullOrEmpty(properties.Name))
+            else if (!string.IsNullOrEmpty(queueProperties.Name))
             {
-                await channel.QueueDeclareAsync(queue: properties.Name,
-                                    durable: properties.Durable,
-                                    exclusive: properties.Exclusive,
-                                    autoDelete: properties.AutoDelete,
+                await _channel.QueueDeclareAsync(queue: queueProperties.Name,
+                                    durable: queueProperties.Durable,
+                                    exclusive: queueProperties.Exclusive,
+                                    autoDelete: queueProperties.AutoDelete,
                                     arguments: null);
+                if (!string.IsNullOrEmpty(routingKey))
+                    await _channel.QueueBindAsync(queueName, exchange, routingKey, null);
             }
-            return new RabbitMqChannel(_loggerFactory.CreateLogger<RabbitMqChannel>(), channel, exchange, type, properties, queueName);
+            return new RabbitMqChannel(_loggerFactory.CreateLogger<RabbitMqChannel>(), _channel, exchange, type, queueProperties, queueName);
         }
 
         /// <inheritdoc/>
@@ -108,11 +111,14 @@ namespace RabbitMq.Core
                     try
                     {
                         // Create a new Connection, we need to hook it up
+                        var excecutingProcess = Process.GetCurrentProcess();
+                        FileVersionInfo fvi = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location);
+                        string version = fvi.FileVersion;
                         //GetRabbitMqConnectionFactory(_configuration);
-                        _currentConnection = await _connectionFactory.CreateConnectionAsync();
+                        //_currentConnection = await _connectionFactory.CreateConnectionAsync();
                         //Uri uri = new Uri($"amqp://{_rabbitMqOptions.UserName}:{_rabbitMqOptions.Password}@{_rabbitMqOptions.Endpoint}/{_rabbitMqOptions.VHost}");
                         //_connectionFactory = new ConnectionFactory() { uri, AutomaticRecoveryEnabled = true };
-                        //_currentConnection = await _connectionFactory.CreateConnectionAsync(!string.IsNullOrWhiteSpace(_rabbitMqOptions.ConnectionName) ? _rabbitMqOptions.ConnectionName : $"{excecutingProcess?.ProcessName}_{version}");
+                        _currentConnection = await _connectionFactory.CreateConnectionAsync(!string.IsNullOrWhiteSpace(_rabbitMqOptions.ConnectionName) ? _rabbitMqOptions.ConnectionName : $"{excecutingProcess?.ProcessName}_{version}");
                         _currentConnection.ConnectionShutdownAsync += OnConnectionShutdown;
                         _currentConnection.ConnectionBlockedAsync += OnConnectionBlocked;
                         _currentConnection.ConnectionUnblockedAsync += OnConnectionUnblocked;
@@ -188,7 +194,13 @@ namespace RabbitMq.Core
             {
                 _logger.LogInformation($"Clearing Rabbit Mq Connection. Endpoint: {_currentConnection?.Endpoint.ToString()}, Reason: {reason}");
                 if (_currentConnection != null && _currentConnection.IsOpen)
+                {
+                    await _channel.CloseAsync();
+                    await _channel.DisposeAsync();
                     await _currentConnection.CloseAsync(200, reason, TimeSpan.FromMilliseconds(500));
+                    await _currentConnection.DisposeAsync();
+                }
+                _channel = null;
                 _currentConnection = null;
             }
             catch (Exception e)

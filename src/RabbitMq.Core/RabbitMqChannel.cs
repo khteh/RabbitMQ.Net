@@ -23,7 +23,6 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
     private string _channelId, _exchange, _queue;
     private IDictionary<string, AsyncEventingBasicConsumer> _consumers;
     private readonly ILogger<RabbitMqChannel> _logger;
-
     public event AsyncEventHandler<RabbitMqChannelDisconnectedEventArgs> Disconnected;
 
     public RabbitMqChannel(ILogger<RabbitMqChannel> logger, IChannel channel, string exchange, string type, IQueueProperties queueProperties, string queueName)
@@ -362,7 +361,6 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
                     _logger.LogInformation("Channel Id:{ChannelId} failed to dispose. Exception:{@Exception}", channelId, exception);
                 }
             });
-
             if (!disposeTask.Wait(TimeSpan.FromSeconds(2)))
             {
                 cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(2));

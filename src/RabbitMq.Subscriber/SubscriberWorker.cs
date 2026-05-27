@@ -71,7 +71,7 @@ public class SubscriberWorker : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogCritical($"{nameof(SubscriberWorker)}.{nameof(ExecuteAsync)} Exception ! {ex.Message}");
+                _logger.LogCritical($"{nameof(SubscriberWorker)}.{nameof(ExecuteAsync)} Exception! {ex.Message}");
             }
         // Clean up when the service is stopping
         if (_subscriber != null)
