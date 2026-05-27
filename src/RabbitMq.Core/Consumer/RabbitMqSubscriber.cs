@@ -100,7 +100,7 @@ public sealed class RabbitMqSubscriber<TMessage> : DisposableObject, IRabbitMqSu
 
     private async Task Subscribe()
     {
-        _logger.LogInformation($"Trying to subscribe to Exchange: {_properties.Exchange}, ExchangeType: {_properties.ExchangeType}, Queue: {_queueProperties.Name}, autoAck {_autoAck}, {_properties.Bindings.Count()} bindings {(_properties.Bindings.Count() == 1 ? _properties.Bindings.First() : string.Empty)}");
+        _logger.LogInformation($"{nameof(RabbitMqSubscriber<TMessage>)}.{nameof(Subscribe)} Exchange: {_properties.Exchange}, ExchangeType: {_properties.ExchangeType}, Queue: {_queueProperties.Name}, autoAck {_autoAck}, {_properties.Bindings.Count()} bindings {(_properties.Bindings.Count() == 1 ? _properties.Bindings.First() : string.Empty)}");
         try
         {
             DisposeChannel();
