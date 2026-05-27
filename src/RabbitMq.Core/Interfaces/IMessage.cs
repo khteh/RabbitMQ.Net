@@ -1,10 +1,7 @@
-using System;
+namespace RabbitMq.Core.Interfaces;
 
-namespace RabbitMq.Core.Interfaces
+public interface IMessage
 {
-    public interface IMessage
-    {
-        string Message {get; set;}
-        DateTimeOffset Timestamp {get; set;}
-    }
+    string Message { get; set; }
+    DateTimeOffset Timestamp { get; set; }
 }

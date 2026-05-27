@@ -65,7 +65,7 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
     public async Task<PublishResult> Publish<TMessage>(TMessage message, IPublishingProperties properties) where TMessage : class
     {
         EnsureChannelHealthy();
-        var body = JsonSerializer.SerializeToUtf8Bytes(message);//properties.SerializeMessage(message);
+        byte[] body = JsonSerializer.SerializeToUtf8Bytes(message);
 
         // Set a default time interval for the wait
         TaskCompletionSource<PublishResult> returnReceivedTask = new TaskCompletionSource<PublishResult>(default(TaskCreationOptions));
