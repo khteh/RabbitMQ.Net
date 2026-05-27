@@ -14,7 +14,6 @@ public class PublisherWorker : BackgroundService
     private readonly SharedState _sharedState;
     protected readonly RabbitMQConfig _rabbitMqOptions;
     private readonly QueueProperties _queueProperties;
-    private readonly IRabbitMqConsumer<IMessage> _consumer;
     private readonly IRabbitMqConnection _connection;
     private readonly PublishingProperties _publishingProperties;
     private IMessage _message;
@@ -34,7 +33,7 @@ public class PublisherWorker : BackgroundService
             Durable = true,
             Exclusive = true,
             AutoDelete = true,
-            Name = null
+            Name = _rabbitMqOptions.QueueName
         };
         _publishingProperties = new PublishingProperties()
         {
@@ -50,7 +49,7 @@ public class PublisherWorker : BackgroundService
         _logger.LogInformation($"Worker {nameof(PublisherWorker)} starts at: {DateTimeOffset.Now}");
         try
         {
-            _logger.LogInformation($"ConnectionName: {_rabbitMqOptions.ConnectionName}, Endpoint: {_rabbitMqOptions.Endpoint}, Port: {_rabbitMqOptions.Port}, VHost: {_rabbitMqOptions.VHost}, Message: {_message.Message} @ {_message.Timestamp}, Exchange: {_rabbitMqOptions.Exchange}, RoutingKey: {_rabbitMqOptions.RoutingKey}");
+            _logger.LogInformation($"ConnectionName: {_rabbitMqOptions.ConnectionName}, Endpoint: {_rabbitMqOptions.Endpoint}, Port: {_rabbitMqOptions.Port}, VHost: {_rabbitMqOptions.VHost}, Message: {_message.Message} @ {_message.Timestamp}, Exchange: {_rabbitMqOptions.Exchange}, RoutingKey: {_rabbitMqOptions.RoutingKey}, Queue: {_rabbitMqOptions.QueueName}");
             _channel = await _connection.CreateChannel(string.IsNullOrEmpty(_rabbitMqOptions.Exchange) ? "topic_logs" : _rabbitMqOptions.Exchange, "topic", _queueProperties);
             _logger.LogInformation($"");
             /* This will initially block until a consumer calls Release() after processing a message, increasing the count by 1.

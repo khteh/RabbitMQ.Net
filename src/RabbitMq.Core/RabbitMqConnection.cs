@@ -43,7 +43,7 @@ namespace RabbitMq.Core
             _rabbitMqOptions = rabbitMqOptions.Value;
             _logger = loggerFactory.CreateLogger<RabbitMqConnection>();
             _connectionFactory = new ConnectionFactory();
-            _logger.LogInformation($"{nameof(RabbitMqConnection)}: ConnectionName:{_rabbitMqOptions.ConnectionName}, UserName:{_rabbitMqOptions.UserName}, Password: {_rabbitMqOptions.Password}, Endpoint: {_rabbitMqOptions.Endpoint}, VHost: {_rabbitMqOptions.VHost}, Port: {_rabbitMqOptions.Port}, Exchange: {_rabbitMqOptions.Exchange}, Bindings: {_rabbitMqOptions.Bindings}, RoutingKey: {_rabbitMqOptions.RoutingKey}");
+            _logger.LogInformation($"{nameof(RabbitMqConnection)}: ConnectionName:{_rabbitMqOptions.ConnectionName}, UserName:{_rabbitMqOptions.UserName}, Password: {_rabbitMqOptions.Password}, Endpoint: {_rabbitMqOptions.Endpoint}, VHost: {_rabbitMqOptions.VHost}, Port: {_rabbitMqOptions.Port}, Exchange: {_rabbitMqOptions.Exchange}, Bindings: {_rabbitMqOptions.Bindings}, RoutingKey: {_rabbitMqOptions.RoutingKey}, Queue: {_rabbitMqOptions.QueueName}");
             // This will enable the subscriber to get notified of cancellation
             // Use ful for the case of clustered queue issues
             // "guest"/"guest" by default, limited to localhost connections

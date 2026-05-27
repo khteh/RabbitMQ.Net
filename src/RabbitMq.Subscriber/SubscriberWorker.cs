@@ -36,7 +36,7 @@ public class SubscriberWorker : BackgroundService
             Durable = true,
             Exclusive = true,
             AutoDelete = true,
-            Name = null
+            Name = _rabbitMqOptions.QueueName
         };
         List<string> bindings = !string.IsNullOrEmpty(_rabbitMqOptions.Bindings) ? _rabbitMqOptions.Bindings.Split(",").ToList() : new List<string>();
         StringBuilder sb = new StringBuilder();
