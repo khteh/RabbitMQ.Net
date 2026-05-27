@@ -111,7 +111,12 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
         await _channelLock.WaitAsync();
         try
         {
-            BasicProperties p = new BasicProperties { Persistent = true };
+            BasicProperties p = new BasicProperties
+            {
+                ContentType = "text/plain",
+                Persistent = true,
+                DeliveryMode = DeliveryModes.Persistent
+            };
             properties.CopyTo(p);
             await _channel.BasicPublishAsync(properties.Exchange, properties.RoutingKey, properties.EnsureDeliveryToQueue, p, body);
         }
