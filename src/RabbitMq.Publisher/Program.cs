@@ -1,72 +1,60 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
 using RabbitMq.Core;
+using RabbitMq.Core.Consumer;
 using RabbitMq.Core.Interfaces;
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
-using static System.Console;
-namespace RabbitMq.Publisher;
-
-class Program
+using Serilog;
+using Serilog.Events;
+using RabbitMq.Publisher;
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .CreateBootstrapLogger();
+try
 {
-    static async Task Main(string[] args)
-    {
-        // $ DOTNET_ENVIRONMENT=Development ./RabbitMq.Publisher
-        string environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Development";
-        string severity = args.Length > 0 ? args[0] : "Anonymous.Info";
-        string exchange = Environment.GetEnvironmentVariable("EXCHANGE");
-        string message = Environment.GetEnvironmentVariable("MESSAGE");
-        string routingKey = Environment.GetEnvironmentVariable("ROUTINGKEY");
-        if (!string.IsNullOrEmpty(routingKey))
-            severity = routingKey;
-        IServiceCollection services = new ServiceCollection();
-        IConfiguration config = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", false, true)
-            .AddJsonFile($"appsettings.{environment}.json", false, true)
-            .AddJsonFile("appsettings.secret.json", true, true)
-            .AddEnvironmentVariables()
-            .Build();
-        services.AddLogging(i => i.AddConsole().AddDebug());
-        services.AddOptions();
-        IConfigurationSection rabbitMqConfigSection = config.GetSection(nameof(RabbitMQConfig));
-        rabbitMqConfigSection["UserName"] = config["UserName"];
-        rabbitMqConfigSection["Password"] = config["Password"];
-        WriteLine($"ConnectionName: {rabbitMqConfigSection["ConnectionName"]}, Endpoint: {rabbitMqConfigSection["Endpoint"]}, VHost: {rabbitMqConfigSection["VHost"]}");
-        services.Configure<RabbitMQConfig>(rabbitMqConfigSection);
-        services.AddTransient<IRabbitMqConnection, RabbitMqConnection>();
-        QueueProperties queueProperties = new QueueProperties()
-        {
-            Temporary = false,
-            Durable = true,
-            Exclusive = true,
-            AutoDelete = true,
-            Name = null
-        };
-        PublishingProperties publishingProperties = new PublishingProperties()
-        {
-            Exchange = string.IsNullOrEmpty(exchange) ? "topic_logs" : exchange,
-            ExchangeType = "topic",
-            RoutingKey = severity,
-            EnablePublisherConfirm = true,
-            EnsureDeliveryToQueue = true // This maps to "mandatory" flag of Publish function. False: Silent when there is no subscriber. True: broker will return BasicReturnEventArgs. https://www.rabbitmq.com/dotnet-api-guide.html
-        };
-        IServiceProvider serviceProvider = services.BuildServiceProvider();
-        using IRabbitMqConnection connection = serviceProvider.GetRequiredService<IRabbitMqConnection>();
-        using IRabbitMqChannel channel = await connection.CreateChannel(string.IsNullOrEmpty(exchange) ? "topic_logs" : exchange, "topic", queueProperties);
-        string msg = args.Length > 1 ? string.Join(" ", args.Skip(1).ToArray()) : "Hello World!!!";
-        if (!string.IsNullOrEmpty(message))
-            msg = message;
-        IMessage testMessage = new TestMessage(msg, DateTimeOffset.UtcNow);
-        PublishResult result = await channel.Publish<IMessage>(testMessage, publishingProperties);
-        if (result != null && result.Success && result.Errors == null)
-            WriteLine($" [x] Sent {severity}: {msg}");
-        else if (result.Errors != null && result.Errors.Any())
-            WriteLine($"Publish failed! {result.Errors.First().Code} {result.Errors.First().Description}");
-        else
-            WriteLine("Publish failed with unknown error!");
-    }
+    IHostBuilder builder = Host.CreateDefaultBuilder(args).ConfigureAppConfiguration((hostingContext, configuration) =>
+     {
+         configuration.Sources.Clear();
+         IHostEnvironment env = hostingContext.HostingEnvironment;
+         IConfiguration config = configuration.AddJsonFile("appsettings.json", false, true)
+                     .AddJsonFile($"appsettings.{env.EnvironmentName}.json", false, true)
+                     .AddEnvironmentVariables()
+                     .AddCommandLine(args)
+                     .Build();
+         Log.Information($"env: {env.EnvironmentName}");
+     })
+     .ConfigureServices((context, services) =>
+     {
+         services.AddOptions();
+         IConfigurationSection rabbitMqConfigSection = context.Configuration.GetSection(nameof(RabbitMQConfig));
+         rabbitMqConfigSection["UserName"] = context.Configuration["UserName"];
+         rabbitMqConfigSection["Password"] = context.Configuration["Password"];
+         Log.Information($"ConnectionName: {rabbitMqConfigSection["ConnectionName"]}, Endpoint: {rabbitMqConfigSection["Endpoint"]}, Port: {rabbitMqConfigSection["Port"]}, VHost: {rabbitMqConfigSection["VHost"]}, Message: {rabbitMqConfigSection["MESSAGE"]}, Exchange: {rabbitMqConfigSection["Exchange"]}, RoutingKey: {rabbitMqConfigSection["RoutingKey"]}");
+         services.Configure<RabbitMQConfig>(rabbitMqConfigSection);
+         services.AddHostedService<PublisherWorker>()
+             .AddSingleton<IConfiguration>(context.Configuration)
+             .AddSingleton<SharedState>()
+             .AddSingleton<IRabbitMqSubscriberFactory<IMessage>, RabbitMqSubscriberFactory<IMessage>>()
+             .AddTransient<IMessage>(serviceProvider =>
+                {
+                    return new TestMessage(context.Configuration["MESSAGE"], DateTimeOffset.UtcNow);
+                })
+             .AddTransient<IRabbitMqConnection, RabbitMqConnection>();
+     })
+     .UseSerilog((ctx, svc, config) =>
+     {
+         config.ReadFrom.Configuration(ctx.Configuration).ReadFrom.Services(svc).Enrich.FromLogContext();
+         if (ctx.HostingEnvironment.IsDevelopment() || ctx.HostingEnvironment.IsStaging())
+             config.WriteTo.Console(LogEventLevel.Verbose, "{NewLine}{Timestamp:HH:mm:ss} [{Level}] ({CorrelationToken}) {Message}{NewLine}{Exception}");
+     });
+    using IHost host = builder.Build();
+    await host.RunAsync();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application start-up failed");
+}
+finally
+{
+    Log.CloseAndFlush();
 }

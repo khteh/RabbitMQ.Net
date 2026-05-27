@@ -30,7 +30,6 @@ try
          rabbitMqConfigSection["UserName"] = context.Configuration["UserName"];
          rabbitMqConfigSection["Password"] = context.Configuration["Password"];
          services.Configure<RabbitMQConfig>(rabbitMqConfigSection);
-         services.AddTransient<IRabbitMqConnection, RabbitMqConnection>();
          services.AddHostedService<SubscriberWorker>()
              .AddSingleton<IConfiguration>(context.Configuration)
              .AddSingleton<SharedState>()
