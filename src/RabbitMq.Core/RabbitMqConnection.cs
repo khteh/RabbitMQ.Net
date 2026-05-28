@@ -1,17 +1,13 @@
-using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMq.Core.Events;
 using RabbitMq.Core.Interfaces;
+using RabbitMq.Core.Configuration;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using RabbitMq.Core.Extensions;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Threading;
 
 namespace RabbitMq.Core
 {
@@ -26,6 +22,7 @@ namespace RabbitMq.Core
         private readonly ILoggerFactory _loggerFactory;
         private ConnectionFactory _connectionFactory;
         protected readonly RabbitMQConfig _rabbitMqOptions;
+        protected readonly RabbitMQQueueConfig _rabbitMqQueueOptions;
         /// <inheritdoc/>
         public event EventHandler<RabbitMqConnectedEventArgs> Connected;
         /// <inheritdoc/>
@@ -37,12 +34,13 @@ namespace RabbitMq.Core
         /// </summary>
         /// <param name="logger">Logger Instance</param>
         /// <param name="connectionConfigurations">List of connections</param>
-        public RabbitMqConnection(ILoggerFactory loggerFactory, ILogger<RabbitMqConnection> logger, IOptions<RabbitMQConfig> rabbitMqOptions)
+        public RabbitMqConnection(ILoggerFactory loggerFactory, ILogger<RabbitMqConnection> logger, IOptions<RabbitMQConfig> rabbitMqOptions, IOptions<RabbitMQQueueConfig> rabbitMqQueueOptions)
         {
             _rabbitMqOptions = rabbitMqOptions.Value;
+            _rabbitMqQueueOptions = rabbitMqQueueOptions.Value;
             _logger = logger;
             _loggerFactory = loggerFactory;
-            _logger.LogInformation($"{nameof(RabbitMqConnection)}: ConnectionName:{_rabbitMqOptions.ConnectionName}, UserName:{_rabbitMqOptions.UserName}, Password: {_rabbitMqOptions.Password}, Endpoint: {_rabbitMqOptions.Endpoint}, VHost: {_rabbitMqOptions.VHost}, Port: {_rabbitMqOptions.Port}, Exchange: {_rabbitMqOptions.Exchange}, Bindings: {_rabbitMqOptions.Bindings}, RoutingKey: {_rabbitMqOptions.RoutingKey}, Queue: {_rabbitMqOptions.QueueName}");
+            _logger.LogInformation($"{nameof(RabbitMqConnection)}: ConnectionName:{_rabbitMqOptions.ConnectionName}, UserName:{_rabbitMqOptions.UserName}, Password: {_rabbitMqOptions.Password}, Endpoint: {_rabbitMqOptions.Endpoint}, VHost: {_rabbitMqOptions.VHost}, Port: {_rabbitMqOptions.Port}, Exchange: {_rabbitMqOptions.Exchange}, Bindings: {_rabbitMqOptions.Bindings}, RoutingKey: {_rabbitMqOptions.RoutingKey}, Queue: {_rabbitMqQueueOptions.Name}");
             _connectionFactory = new ConnectionFactory()
             {
                 // This will enable the subscriber to get notified of cancellation

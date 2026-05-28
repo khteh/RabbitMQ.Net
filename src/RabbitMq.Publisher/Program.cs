@@ -2,6 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RabbitMq.Core;
+using RabbitMq.Core.Configuration;
 using RabbitMq.Core.Consumer;
 using RabbitMq.Core.Interfaces;
 using Serilog;
@@ -27,9 +28,11 @@ try
      {
          services.AddOptions();
          IConfigurationSection rabbitMqConfigSection = context.Configuration.GetSection(nameof(RabbitMQConfig));
+         IConfigurationSection rabbitMqQueueConfigSection = context.Configuration.GetSection(nameof(RabbitMQQueueConfig));
          rabbitMqConfigSection["UserName"] = context.Configuration["UserName"];
          rabbitMqConfigSection["Password"] = context.Configuration["Password"];
          services.Configure<RabbitMQConfig>(rabbitMqConfigSection);
+         services.Configure<RabbitMQQueueConfig>(rabbitMqQueueConfigSection);
          services.AddHostedService<PublisherWorker>()
              .AddSingleton<IConfiguration>(context.Configuration)
              .AddSingleton<SharedState>()

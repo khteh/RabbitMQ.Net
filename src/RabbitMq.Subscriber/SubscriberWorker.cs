@@ -3,6 +3,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMq.Core;
+using RabbitMq.Core.Configuration;
 using RabbitMq.Core.Consumer;
 using RabbitMq.Core.Interfaces;
 namespace RabbitMq.Subscriber;
@@ -13,6 +14,7 @@ public class SubscriberWorker : BackgroundService
     private readonly IHostApplicationLifetime _hostAppLifetime;
     private readonly SharedState _sharedState;
     protected readonly RabbitMQConfig _rabbitMqOptions;
+    protected readonly RabbitMQQueueConfig _rabbitMqQueueOptions;
     private readonly IRabbitMqSubscriberFactory<IMessage> _subscriberFactory;
     private readonly IRabbitMqSubscriber<IMessage> _subscriber;
     private readonly SubscriberProperties _subscriberProperties;
@@ -21,23 +23,17 @@ public class SubscriberWorker : BackgroundService
     private readonly IRabbitMqConnection _connection;
     private bool _isConnected = false;
 
-    public SubscriberWorker(IHostApplicationLifetime hostApplicationLifetime, ILogger<SubscriberWorker> logger, IOptions<RabbitMQConfig> rabbitMqOptions, SharedState sharedState, IRabbitMqSubscriberFactory<IMessage> subscriberFactory, IRabbitMqConnection connection, IRabbitMqConsumer<IMessage> consumer)
+    public SubscriberWorker(IHostApplicationLifetime hostApplicationLifetime, ILogger<SubscriberWorker> logger, IOptions<RabbitMQConfig> rabbitMqOptions, IOptions<RabbitMQQueueConfig> rabbitMqQueueOptions, SharedState sharedState, IRabbitMqSubscriberFactory<IMessage> subscriberFactory, IRabbitMqConnection connection, IRabbitMqConsumer<IMessage> consumer)
     {
         _logger = logger;
         _hostAppLifetime = hostApplicationLifetime;
         _sharedState = sharedState;
         _rabbitMqOptions = rabbitMqOptions.Value;
+        _rabbitMqQueueOptions = rabbitMqQueueOptions.Value;
         _subscriberFactory = subscriberFactory;
         _consumer = consumer;
         _connection = connection;
-        _queueProperties = new QueueProperties()
-        {
-            Temporary = true,
-            Durable = true,
-            Exclusive = true,
-            AutoDelete = true,
-            Name = _rabbitMqOptions.QueueName
-        };
+        _queueProperties = new QueueProperties(_rabbitMqQueueOptions);
         List<string> bindings = !string.IsNullOrEmpty(_rabbitMqOptions.Bindings) ? _rabbitMqOptions.Bindings.Split(",").ToList() : new List<string>();
         StringBuilder sb = new StringBuilder();
         foreach (string i in bindings)
@@ -65,7 +61,7 @@ public class SubscriberWorker : BackgroundService
             {
                 _logger.LogInformation(" [*] Waiting for logs...");
                 /* This will initially block until a consumer calls Release() after processing a message, increasing the count by 1.
-                * The following call will not block because it the count is 1. Then it will enters the semaphore with the count decremented by one, continue with the while loop.and call WaitAsync again, which will block.
+                * Then it enters the semaphore, decrement the count by 1 to 0 and then block waiting for a consumer to call Release() again.
                 */
                 await _sharedState.SignalEvent.WaitAsync(stoppingToken);
             }
