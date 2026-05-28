@@ -1,10 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using RabbitMq.Core.Events;
-using RabbitMq.Core.Interfaces;
 using RabbitMQ.Client.Events;
-
 namespace RabbitMq.Core.Interfaces;
 
 public interface IRabbitMqChannel : IDisposable

@@ -78,7 +78,17 @@ namespace RabbitMq.Core
                 string queueName = queueProperties.Name;
                 if (queueProperties.Temporary)
                 {
-                    var result = await _channel.QueueDeclareAsync(string.Empty);
+                    /*
+                    * A temporary queue is a fresh empty queue.
+                    * Use case:
+                    * (1) Receive all messages, not just a subset of them.
+                    * (2) Interested only in currently flowing messages but not in the old ones.
+                    */
+                    var result = await _channel.QueueDeclareAsync(queue: string.Empty,
+                                        durable: queueProperties.Durable,
+                                        exclusive: queueProperties.Exclusive,
+                                        autoDelete: queueProperties.AutoDelete,
+                                        arguments: null);
                     queueName = result.QueueName;
                 }
                 else if (!string.IsNullOrEmpty(queueProperties.Name))
@@ -88,6 +98,12 @@ namespace RabbitMq.Core
                                         exclusive: queueProperties.Exclusive,
                                         autoDelete: queueProperties.AutoDelete,
                                         arguments: null);
+                    /* Ignored when the exchange type is fanout, which routes messages to all bound queues regardless of the routing key. https://www.rabbitmq.com/tutorials/amqp-concepts.html
+                    * Topic binding rules:
+                      * substitutes exactly one word.
+                      # substitutes zero or more words.
+                      Words are separated by . in routing keys.
+                    */
                     if (!string.IsNullOrEmpty(routingKey))
                         await _channel.QueueBindAsync(queueName, exchange, routingKey, null);
                 }
