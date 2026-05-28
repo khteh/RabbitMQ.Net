@@ -54,9 +54,9 @@ namespace RabbitMq.Core
             };
             _connectionFactory.Ssl.Enabled = true;
             // .NET expects this to match the Subject Alternative Name (SAN) or Common Name (CN) on the certificate that the server sends over.
-            //_connectionFactory.Ssl.ServerName = "*.rabbitmq-nodes.default.svc.cluster.local,rabbitmq.default.svc.cluster.local"; // This MUST match the Subject Alternative Name (SAN) or CN on the peer's (server's) leaf certificate,
-            _connectionFactory.Ssl.ServerName = string.Empty;
-            _connectionFactory.Ssl.CertPath = "/tmp/localhost.pfx";
+            _connectionFactory.Ssl.ServerName = "*.rabbitmq-nodes.default.svc.cluster.local,rabbitmq.default.svc.cluster.local"; // This MUST match the Subject Alternative Name (SAN) or CN on the peer's (server's) leaf certificate,
+            //_connectionFactory.Ssl.ServerName = string.Empty;
+            _connectionFactory.Ssl.CertPath = "server.crt";
             _connectionFactory.Ssl.CertPassphrase = _rabbitMqOptions.Password;
         }
 
