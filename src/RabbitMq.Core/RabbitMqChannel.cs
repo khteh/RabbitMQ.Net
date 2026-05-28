@@ -51,13 +51,14 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
     public async Task<PublishResult> Publish<TMessage>(string exchange, string routingKey, TMessage message, Action<IPublishingProperties> configuration)
         where TMessage : class
     {
-        var properties = new PublishingProperties();
-        properties.Exchange = exchange;
-        properties.RoutingKey = routingKey;
+        PublishingProperties properties = new PublishingProperties()
+        {
+            Exchange = exchange,
+            RoutingKey = routingKey
+        };
 
         // Apply Custom settings
         configuration?.Invoke(properties);
-
         return await Publish<TMessage>(message, properties);
     }
 
@@ -114,8 +115,8 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
             BasicProperties p = new BasicProperties
             {
                 ContentType = "text/plain",
-                Persistent = true,
-                DeliveryMode = DeliveryModes.Persistent
+                Persistent = properties.Persistent,
+                DeliveryMode = properties.Persistent ? DeliveryModes.Persistent : DeliveryModes.Transient
             };
             properties.CopyTo(p);
             await _channel.BasicPublishAsync(properties.Exchange, properties.RoutingKey, properties.EnsureDeliveryToQueue, p, body);
@@ -130,7 +131,6 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
                 ct.Token.Register(async () =>
                 {
                     if (_channel != null)
-                    {
                         if (properties.EnsureDeliveryToQueue)
                         {
                             await _channelLock.WaitAsync();
@@ -143,17 +143,16 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
                                 _channelLock.Release();
                             }
                         }
-                        if (properties.EnablePublisherConfirm)
+                    if (properties.EnablePublisherConfirm)
+                    {
+                        await _channelLock.WaitAsync();
+                        try
                         {
-                            await _channelLock.WaitAsync();
-                            try
-                            {
-                                _channel.BasicAcksAsync -= basicAckHandler;
-                            }
-                            finally
-                            {
-                                _channelLock.Release();
-                            }
+                            _channel.BasicAcksAsync -= basicAckHandler;
+                        }
+                        finally
+                        {
+                            _channelLock.Release();
                         }
                     }
                     returnReceivedTask.TrySetException(new TimeoutException($"Publishing message of type {typeof(TMessage).Name} didn't get accepted in time {properties.PublishReturnWaitTime}"));

@@ -1,6 +1,6 @@
-# .Net RabbitMQ Publisher/Subscriber Application 
+# .Net RabbitMQ Publisher/Subscriber Application
 
-A .NET 10.0 application demonstrating a RabbitMQ publisher/subscriber pattern.
+A .NET 10.0 application demonstrating a RabbitMQ publisher/subscriber pattern using the .NET client library.
 
 # Development environment
 
