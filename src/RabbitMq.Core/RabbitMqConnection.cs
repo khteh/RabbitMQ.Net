@@ -52,7 +52,10 @@ namespace RabbitMq.Core
                 HostName = _rabbitMqOptions.Endpoint,
                 Port = _rabbitMqOptions.Port
             };
-            _connectionFactory.Ssl.Enabled = true;
+            /*
+            * https://github.com/docker-library/rabbitmq/discussions/813
+            */
+            _connectionFactory.Ssl.Enabled = false;
             // .NET expects this to match the Subject Alternative Name (SAN) or Common Name (CN) on the certificate that the server sends over.
             _connectionFactory.Ssl.ServerName = "*.rabbitmq-nodes.default.svc.cluster.local,rabbitmq.default.svc.cluster.local"; // This MUST match the Subject Alternative Name (SAN) or CN on the peer's (server's) leaf certificate,
             //_connectionFactory.Ssl.ServerName = string.Empty;
@@ -63,30 +66,35 @@ namespace RabbitMq.Core
         /// <inheritdoc/>
         public async Task<IRabbitMqChannel> CreateChannel(string exchange, string type, string routingKey, IQueueProperties queueProperties)
         {
-            IConnection rabbitMqConnection = await GetConnection();
             if (IsDisposed || IsDisposing)
                 throw new InvalidOperationException($"Channel is already Disposed");
-            _logger.LogInformation($"{nameof(RabbitMqConnection)}.{nameof(CreateChannel)} Exchange: {exchange}, type: {type}, routingKey: {routingKey}, {(queueProperties.Temporary ? "Temporary" : queueProperties.Name)}");
-            //return new RabbitMqChannel(_loggerFactory.CreateLogger<RabbitMqChannel>(), rabbitMqConnection.CreateModel(), exchange, type, properties);
-            _channel = await rabbitMqConnection.CreateChannelAsync();
-            await _channel.ExchangeDeclareAsync(exchange, type);
-            string queueName = queueProperties.Name;
-            if (queueProperties.Temporary)
+            IConnection rabbitMqConnection = await GetConnection();
+            if (rabbitMqConnection != null && rabbitMqConnection.IsOpen)
             {
-                var result = await _channel.QueueDeclareAsync(string.Empty);
-                queueName = result.QueueName;
+                _logger.LogInformation($"{nameof(RabbitMqConnection)}.{nameof(CreateChannel)} Exchange: {exchange}, type: {type}, routingKey: {routingKey}, {(queueProperties.Temporary ? "Temporary" : queueProperties.Name)}");
+                //return new RabbitMqChannel(_loggerFactory.CreateLogger<RabbitMqChannel>(), rabbitMqConnection.CreateModel(), exchange, type, properties);
+                _channel = await rabbitMqConnection.CreateChannelAsync();
+                await _channel.ExchangeDeclareAsync(exchange, type);
+                string queueName = queueProperties.Name;
+                if (queueProperties.Temporary)
+                {
+                    var result = await _channel.QueueDeclareAsync(string.Empty);
+                    queueName = result.QueueName;
+                }
+                else if (!string.IsNullOrEmpty(queueProperties.Name))
+                {
+                    await _channel.QueueDeclareAsync(queue: queueProperties.Name,
+                                        durable: queueProperties.Durable,
+                                        exclusive: queueProperties.Exclusive,
+                                        autoDelete: queueProperties.AutoDelete,
+                                        arguments: null);
+                    if (!string.IsNullOrEmpty(routingKey))
+                        await _channel.QueueBindAsync(queueName, exchange, routingKey, null);
+                }
+                return new RabbitMqChannel(_loggerFactory.CreateLogger<RabbitMqChannel>(), _channel, exchange, type, queueProperties, queueName);
             }
-            else if (!string.IsNullOrEmpty(queueProperties.Name))
-            {
-                await _channel.QueueDeclareAsync(queue: queueProperties.Name,
-                                    durable: queueProperties.Durable,
-                                    exclusive: queueProperties.Exclusive,
-                                    autoDelete: queueProperties.AutoDelete,
-                                    arguments: null);
-                if (!string.IsNullOrEmpty(routingKey))
-                    await _channel.QueueBindAsync(queueName, exchange, routingKey, null);
-            }
-            return new RabbitMqChannel(_loggerFactory.CreateLogger<RabbitMqChannel>(), _channel, exchange, type, queueProperties, queueName);
+            else
+                return null;
         }
 
         /// <inheritdoc/>
