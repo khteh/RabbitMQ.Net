@@ -160,14 +160,14 @@ namespace RabbitMq.Core
                         _connectionHealthy = false;
                         if (i >= maxRetryCount)
                             throw;
-                        _logger.LogCritical($"{nameof(RabbitMqConnection)}.{nameof(GetConnection)} Endpoint: amqp://{_rabbitMqOptions.UserName}:{_rabbitMqOptions.Password}@{_rabbitMqOptions.Endpoint}/{_rabbitMqOptions.VHost} BrokerUnreachableException! {e.Message} {e.GetInnerMessage()} {e.StackTrace}");
+                        _logger.LogCritical($"{nameof(RabbitMqConnection)}.{nameof(GetConnection)} Endpoint: amqp://{_rabbitMqOptions.UserName}:{_rabbitMqOptions.Password}@{_rabbitMqOptions.Endpoint}:{_rabbitMqOptions.Port}/{_rabbitMqOptions.VHost} BrokerUnreachableException! {e.Message} {e.GetInnerMessage()} {e.StackTrace}");
                     }
                     catch (Exception e)
                     {
                         _connectionHealthy = false;
                         if (i >= maxRetryCount)
                             throw;
-                        _logger.LogCritical($"{nameof(RabbitMqConnection)}.{nameof(GetConnection)} Endpoint: amqp://{_rabbitMqOptions.UserName}:{_rabbitMqOptions.Password}@{_rabbitMqOptions.Endpoint}/{_rabbitMqOptions.VHost} Exception! {e.Message} {e.GetInnerMessage()} {e.StackTrace}");
+                        _logger.LogCritical($"{nameof(RabbitMqConnection)}.{nameof(GetConnection)} Endpoint: amqp://{_rabbitMqOptions.UserName}:{_rabbitMqOptions.Password}@{_rabbitMqOptions.Endpoint}:{_rabbitMqOptions.Port}/{_rabbitMqOptions.VHost} Exception! {e.Message} {e.GetInnerMessage()} {e.StackTrace}");
                     }
                 }
                 finally
