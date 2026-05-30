@@ -77,7 +77,7 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
 
         AsyncEventHandler<BasicAckEventArgs> basicAckHandler = async (o, e) =>
         {
-            _logger.LogInformation($"Published Message Accepted with delivery Tag : {e.DeliveryTag}");
+            _logger.LogInformation($"Published Message Accepted with delivery Tag {e.DeliveryTag}, multiple: {e.Multiple}");
             returnReceivedTask.TrySetResult(new PublishResult(true, e.DeliveryTag, e.Multiple, null));
         };
 
@@ -125,6 +125,7 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
         {
             _channelLock.Release();
         }
+#if false
         using (CancellationTokenSource ct = new CancellationTokenSource(properties.PublishReturnWaitTime))
             try
             {
@@ -166,6 +167,10 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
                 _logger.LogCritical($"{nameof(RabbitMqChannel)}.{nameof(Publish)} Exception! {e.Message} {e.GetInnerMessage()} {e.StackTrace}");
                 return new PublishResult(false, 0, false, new List<Error>() { new Error(HttpStatusCode.InternalServerError.ToString(), $"Exception! {e.Message} {e.GetInnerMessage()} {e.StackTrace}") });
             }
+#endif
+        var result = await returnReceivedTask.Task.ConfigureAwait(false);
+        _logger.LogInformation($"Published Message type {typeof(TMessage).Name}, result:{result}");
+        return result;
     }
 
     public async Task Respond<TResponse>(BasicDeliverEventArgs consumeArgument, TResponse response, Action<IPublishingProperties> configuration)
