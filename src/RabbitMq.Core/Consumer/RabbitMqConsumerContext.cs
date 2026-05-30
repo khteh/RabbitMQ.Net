@@ -8,13 +8,16 @@ namespace RabbitMq.Core.Consumer;
 
 public class RabbitMqConsumerContext : BaseRabbitMqConsumeContext
 {
-    ILogger _logger;
+    private readonly ILogger _logger;
+    private readonly JsonSerializerOptions _jsonSerializerOptions;
     //private readonly IMessageSerializer _messageSerializer;
 
     public RabbitMqConsumerContext(string queueName, BasicDeliverEventArgs rabbitMqDeliveredArgs, IRabbitMqChannel channel, bool ackRequired, ILogger logger)
         : base(queueName, rabbitMqDeliveredArgs, channel, ackRequired, logger)
     {
         _logger = logger;
+        _jsonSerializerOptions = new JsonSerializerOptions();
+        _jsonSerializerOptions.Converters.Add(new MessageConverter());
         //_messageSerializer = messageSerializer;
     }
 
@@ -39,7 +42,7 @@ public class RabbitMqConsumerContext : BaseRabbitMqConsumeContext
                 _logger.LogDebug($"Rabbit Mq: Deserializing Message id:{RabbitMqDeliveredEvent.BasicProperties?.MessageId}, body:{message} to type:{typeof(TMessage).Name}");
             }
             //object obj = RabbitMqDeliveredEvent.Body.FromByteArray<TMessage>();//_messageSerializer.Deserialize<TMessage>(RabbitMqDeliveredEvent.Body);
-            return new RabbitMqMessageConsumeContext<TMessage>(this, JsonSerializer.Deserialize<TMessage>(body));
+            return new RabbitMqMessageConsumeContext<TMessage>(this, JsonSerializer.Deserialize<TMessage>(body, _jsonSerializerOptions));
         }
         catch (Exception ex)
         {
