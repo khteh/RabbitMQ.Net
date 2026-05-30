@@ -36,7 +36,6 @@ try
          services.AddHostedService<SubscriberWorker>()
              .AddSingleton<IConfiguration>(context.Configuration)
              .AddSingleton<SharedState>()
-             .AddTransient<IMessage, TestMessage>()
              .AddSingleton<IRabbitMqSubscriberFactory<IMessage>, RabbitMqSubscriberFactory<IMessage>>()
              .AddTransient<IRabbitMqConsumer<IMessage>, Message1AckNackConsumer>()
              .Decorate<IRabbitMqConsumer<IMessage>, PostConsumerAckDecorator<IMessage>>()
