@@ -8,9 +8,5 @@ public class TestMessage : IMessage
     public string Message { get; set; }
     public DateTimeOffset Timestamp { get; set; }
     [JsonConstructor]
-    public TestMessage(string msg, DateTimeOffset timestamp)
-    {
-        Message = msg;
-        Timestamp = timestamp;
-    }
+    public TestMessage(string message, DateTimeOffset timestamp) => (Message, Timestamp) = (message, timestamp);
 }

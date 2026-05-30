@@ -14,13 +14,12 @@ public class MessageConverter : JsonConverter<IMessage>
             var root = doc.RootElement;
             // Look for a unique property to determine the type
             if (root.TryGetProperty("Message", out _) && root.TryGetProperty("Timestamp", out _))
-                return JsonSerializer.Deserialize<TestMessage>(root.GetRawText(), options);
+                //return JsonSerializer.Deserialize<TestMessage>(root.GetRawText(), options);
+                return new TestMessage(root.GetProperty("Message").GetString(), root.GetProperty("Timestamp").GetDateTimeOffset());
             throw new JsonException($"Unknown message type. JSON: {root.GetRawText()}");
         }
     }
 
-    public override void Write(Utf8JsonWriter writer, IMessage value, JsonSerializerOptions options)
-    {
+    public override void Write(Utf8JsonWriter writer, IMessage value, JsonSerializerOptions options) =>
         JsonSerializer.Serialize(writer, value, value.GetType(), options);
-    }
 }
