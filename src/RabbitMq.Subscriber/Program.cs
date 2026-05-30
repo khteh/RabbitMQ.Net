@@ -36,9 +36,10 @@ try
          services.AddHostedService<SubscriberWorker>()
              .AddSingleton<IConfiguration>(context.Configuration)
              .AddSingleton<SharedState>()
-             .AddSingleton<IRabbitMqSubscriberFactory<TestMessage>, RabbitMqSubscriberFactory<TestMessage>>()
+             .AddTransient<IMessage, TestMessage>()
+             .AddSingleton<IRabbitMqSubscriberFactory<IMessage>, RabbitMqSubscriberFactory<IMessage>>()
              .AddTransient<IRabbitMqConsumer<IMessage>, Message1AckNackConsumer>()
-             .Decorate<IRabbitMqConsumer<TestMessage>, PostConsumerAckDecorator<TestMessage>>()
+             .Decorate<IRabbitMqConsumer<IMessage>, PostConsumerAckDecorator<IMessage>>()
              .AddTransient<IRabbitMqConnection, RabbitMqConnection>();
      })
      .UseSerilog((ctx, svc, config) =>
