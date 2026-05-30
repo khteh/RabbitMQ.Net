@@ -36,8 +36,7 @@ public class RabbitMqConsumerContext : BaseRabbitMqConsumeContext
                 //responseReceivedTask.TrySetResult(JsonConvert.DeserializeObject<TResponse>(message));
                 //
                 //var message = Encoding.UTF8.GetString(RabbitMqDeliveredEvent.Body);
-                _logger.LogDebug(
-                    $"Rabbit Mq: Deserializing Message id:{RabbitMqDeliveredEvent.BasicProperties?.MessageId}, body:{message} to type:{typeof(TMessage).Name}");
+                _logger.LogDebug($"Rabbit Mq: Deserializing Message id:{RabbitMqDeliveredEvent.BasicProperties?.MessageId}, body:{message} to type:{typeof(TMessage).Name}");
             }
             //object obj = RabbitMqDeliveredEvent.Body.FromByteArray<TMessage>();//_messageSerializer.Deserialize<TMessage>(RabbitMqDeliveredEvent.Body);
             return new RabbitMqMessageConsumeContext<TMessage>(this, JsonSerializer.Deserialize<TMessage>(body));
