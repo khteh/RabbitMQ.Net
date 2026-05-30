@@ -32,9 +32,8 @@ public class RabbitMqConsumerContext : BaseRabbitMqConsumeContext
             if (_logger.IsEnabled(LogLevel.Debug))
 
                 _logger.LogDebug($"{nameof(RabbitMqConsumerContext)}.{nameof(GetConsumeContext)}: Deserializing Message id: {RabbitMqDeliveredEvent.BasicProperties?.MessageId}, body:{message} to type:{typeof(TMessage).Name}");
-            //object obj = RabbitMqDeliveredEvent.Body.FromByteArray<TMessage>();//_messageSerializer.Deserialize<TMessage>(RabbitMqDeliveredEvent.Body);
-            //return new RabbitMqMessageConsumeContext<TMessage>(this, JsonSerializer.Deserialize<TMessage>(body, _jsonSerializerOptions));
-            return new RabbitMqMessageConsumeContext<TMessage>(this, JsonSerializer.Deserialize<TMessage>(body));
+            // Deserialization of interface or abstract types is not supported. Type 'RabbitMq.Core.Interfaces.IMessage' wihtout using a custom converter.
+            return new RabbitMqMessageConsumeContext<TMessage>(this, JsonSerializer.Deserialize<TMessage>(body, _jsonSerializerOptions));
         }
         catch (Exception ex)
         {
