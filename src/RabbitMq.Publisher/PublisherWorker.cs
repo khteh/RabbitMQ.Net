@@ -47,7 +47,6 @@ public class PublisherWorker : BackgroundService
         {
             _logger.LogInformation($"{nameof(PublisherWorker)}.{nameof(ExecuteAsync)} ConnectionName: {_rabbitMqOptions.ConnectionName}, Endpoint: {_rabbitMqOptions.Endpoint}, Port: {_rabbitMqOptions.Port}, VHost: {_rabbitMqOptions.VHost}, Message: {_message.Message} @ {_message.Timestamp}, Exchange: {_rabbitMqOptions.Exchange}, RoutingKey: {_rabbitMqOptions.RoutingKey}, Queue: {_rabbitMqQueueOptions.Name}");
             _channel = await _connection.CreateChannel(string.IsNullOrEmpty(_rabbitMqOptions.Exchange) ? "topic_logs" : _rabbitMqOptions.Exchange, "topic", _rabbitMqOptions.RoutingKey, _queueProperties);
-            _logger.LogInformation($"");
             /* This will initially block until a consumer calls Release() after processing a message, increasing the count by 1.
             * The following call will not block because it the count is 1. Then it will enters the semaphore with the count decremented by one, continue with the while loop.and call WaitAsync again, which will block.
             */
@@ -55,7 +54,7 @@ public class PublisherWorker : BackgroundService
             PublishResult result = await _channel.Publish<IMessage>(_message, _publishingProperties);
             if (result != null && result.Success && result.Errors == null)
                 _logger.LogInformation($" [x] Sent {_rabbitMqOptions.RoutingKey}: {_message.Message} @ {_message.Timestamp}");
-            else if (result.Errors != null && result.Errors.Any())
+            else if (result != null && result.Errors != null && result.Errors.Any())
                 _logger.LogError($"Publish failed! {result.Errors.First().Code} {result.Errors.First().Description}");
             else
                 _logger.LogError("Publish failed with unknown error!");
