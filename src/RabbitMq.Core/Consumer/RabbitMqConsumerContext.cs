@@ -10,7 +10,6 @@ public class RabbitMqConsumerContext : BaseRabbitMqConsumeContext
 {
     private readonly ILogger _logger;
     private readonly JsonSerializerOptions _jsonSerializerOptions;
-    //private readonly IMessageSerializer _messageSerializer;
 
     public RabbitMqConsumerContext(string queueName, BasicDeliverEventArgs rabbitMqDeliveredArgs, IRabbitMqChannel channel, bool ackRequired, ILogger logger)
         : base(queueName, rabbitMqDeliveredArgs, channel, ackRequired, logger)
@@ -18,7 +17,6 @@ public class RabbitMqConsumerContext : BaseRabbitMqConsumeContext
         _logger = logger;
         _jsonSerializerOptions = new JsonSerializerOptions();
         _jsonSerializerOptions.Converters.Add(new MessageConverter());
-        //_messageSerializer = messageSerializer;
     }
 
     public override IRabbitMqConsumeContext<TMessage> GetConsumeContext<TMessage>()
@@ -32,22 +30,16 @@ public class RabbitMqConsumerContext : BaseRabbitMqConsumeContext
             string routingKey = RabbitMqDeliveredEvent.RoutingKey;
             var props = RabbitMqDeliveredEvent.BasicProperties;
             if (_logger.IsEnabled(LogLevel.Debug))
-            {
 
-                // 3. Deserialize the response
-                //var response = message.FromJson<TResponse>();
-                //responseReceivedTask.TrySetResult(JsonConvert.DeserializeObject<TResponse>(message));
-                //
-                //var message = Encoding.UTF8.GetString(RabbitMqDeliveredEvent.Body);
-                _logger.LogDebug($"Rabbit Mq: Deserializing Message id:{RabbitMqDeliveredEvent.BasicProperties?.MessageId}, body:{message} to type:{typeof(TMessage).Name}");
-            }
+                _logger.LogDebug($"{nameof(RabbitMqConsumerContext)}.{nameof(GetConsumeContext)}: Deserializing Message id: {RabbitMqDeliveredEvent.BasicProperties?.MessageId}, body:{message} to type:{typeof(TMessage).Name}");
             //object obj = RabbitMqDeliveredEvent.Body.FromByteArray<TMessage>();//_messageSerializer.Deserialize<TMessage>(RabbitMqDeliveredEvent.Body);
-            return new RabbitMqMessageConsumeContext<TMessage>(this, JsonSerializer.Deserialize<TMessage>(body, _jsonSerializerOptions));
+            //return new RabbitMqMessageConsumeContext<TMessage>(this, JsonSerializer.Deserialize<TMessage>(body, _jsonSerializerOptions));
+            return new RabbitMqMessageConsumeContext<TMessage>(this, JsonSerializer.Deserialize<TMessage>(body));
         }
         catch (Exception ex)
         {
             _logger.LogWarning(
-                $"Failed to Convert the incoming message to {typeof(TMessage).Name}, on queue:{QueueName}, exception:{ex}");
+                $"{nameof(RabbitMqConsumerContext)}.{nameof(GetConsumeContext)}: Failed to Convert the incoming message to {typeof(TMessage).Name}, on queue:{QueueName}, exception:{ex}");
             throw;
         }
     }
