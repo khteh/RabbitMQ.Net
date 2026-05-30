@@ -135,7 +135,7 @@ namespace RabbitMq.Core
                         return _currentConnection;
                     // Make sure we dispose the existing connection
                     // Hence using a different lock for the events
-                    ClearConnection($"{nameof(RabbitMqConnection)}.{nameof(GetConnection)} reconnecting");
+                    await ClearConnection($"{nameof(RabbitMqConnection)}.{nameof(GetConnection)} reconnecting...");
                     try
                     {
                         // Create a new Connection, we need to hook it up
@@ -151,7 +151,7 @@ namespace RabbitMq.Core
                         _currentConnection.ConnectionBlockedAsync += OnConnectionBlocked;
                         _currentConnection.ConnectionUnblockedAsync += OnConnectionUnblocked;
                         _currentConnection.RecoverySucceededAsync += OnRecoverySucceeded;
-                        _logger.LogInformation($"Rabbit Mq Connection Established. Endpoint: {_currentConnection?.Endpoint}");
+                        _logger.LogInformation($"{nameof(RabbitMqConnection)}.{nameof(GetConnection)} Connection Established! Endpoint: {_currentConnection?.Endpoint}");
                         OnConnected();
                         break;
                     }
@@ -180,28 +180,28 @@ namespace RabbitMq.Core
 
         private async Task OnRecoverySucceeded(object sender, AsyncEventArgs e)
         {
-            _logger.LogInformation("Rabbit Mq Connection Recovered. Endpoint:{Endpoint}", _currentConnection?.Endpoint);
+            _logger.LogInformation($"{nameof(RabbitMqConnection)}.{nameof(OnRecoverySucceeded)} Connection Recovered! Endpoint:{_currentConnection?.Endpoint}");
             OnConnected();
         }
 
         private async Task OnConnectionUnblocked(object sender, AsyncEventArgs e)
         {
             _connectionHealthy = true;
-            _logger.LogInformation($"Rabbit Mq Connection UnBlocked");
+            _logger.LogInformation($"{nameof(RabbitMqConnection)}.{nameof(OnConnectionUnblocked)} Connection UnBlocked!");
         }
 
         private async Task OnConnectionBlocked(object sender, ConnectionBlockedEventArgs e) =>
-            _logger.LogWarning($"Rabbit Mq Connection Blocked. Reason: {e.Reason}");
+            _logger.LogWarning($"{nameof(RabbitMqConnection)}.{nameof(OnConnectionBlocked)} Connection Blocked! Reason: {e.Reason}");
 
         private async Task OnConnectionShutdown(object sender, ShutdownEventArgs e)
         {
-            _logger.LogWarning($"Rabbit Mq Connection Shutdown. ReplyCode: {e.ReplyCode}, reply Text: {e.ReplyText}. Retrying another endpoint in the cluster");
+            _logger.LogWarning($"{nameof(RabbitMqConnection)}.{nameof(OnConnectionShutdown)} Connection Shutdown! ReplyCode: {e.ReplyCode}, reply Text: {e.ReplyText}. Retrying another endpoint in the cluster");
             OnDisconnected();
         }
 
         private void OnConnected()
         {
-            _logger.LogInformation($"OnConnected Rabbit Mq Connection ConnectionName: {_rabbitMqOptions.ConnectionName}");
+            _logger.LogInformation($"{nameof(RabbitMqConnection)}.{nameof(OnConnected)} ConnectionName: {_rabbitMqOptions.ConnectionName}");
             lock (_connectionEventsLock)
             {
                 _connectionHealthy = true;
@@ -212,7 +212,7 @@ namespace RabbitMq.Core
 
         private void OnDisconnected()
         {
-            _logger.LogInformation($"OnDisconnected Rabbit Mq Connection {_rabbitMqOptions.ConnectionName}");
+            _logger.LogInformation($"{nameof(RabbitMqConnection)}.{nameof(OnDisconnected)} ConnectionName: {_rabbitMqOptions.ConnectionName}");
             lock (_connectionEventsLock)
             {
                 _connectionHealthy = false;
@@ -226,7 +226,7 @@ namespace RabbitMq.Core
         {
             try
             {
-                _logger.LogInformation($"Clearing Rabbit Mq Connection. Endpoint: {_currentConnection?.Endpoint.ToString()}, Reason: {reason}");
+                _logger.LogInformation($"{nameof(RabbitMqConnection)}.{nameof(ClearConnection)} Endpoint: {_currentConnection?.Endpoint.ToString()}, Reason: {reason}");
                 if (_currentConnection != null && _currentConnection.IsOpen)
                 {
                     await _channel.CloseAsync();
