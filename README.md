@@ -7,10 +7,16 @@ A .NET 10.0 application demonstrating a RabbitMQ publisher/subscriber pattern us
 - Copy `nuget.config.FIXME` to `nuget.config`
 - Add `Username` and access token from github Developer Settings
 
+# Publisher
+
+```
+[rabbitmq-publisher-job-29670015-6g2pd fluentd] 2026-05-31 04:15:10.159213259 +0000 publisher: {"@timestamp":"2026-05-31T04:15:08.1331694+00:00","log.level":"Information","message":" [x] Sent kern.info: Hello World!!! @ 05/31/2026 04:15:08 +00:00","ecs.version":"9.0.0","log":{"logger":"RabbitMq.Publisher.PublisherWorker"},"labels":{"MessageTemplate":" [x] Sent kern.info: Hello World!!! @ 05/31/2026 04:15:08 +00:00"},"agent":{"type":"Elastic.CommonSchema.Serilog","version":"9.0.0+608d9254e808806db6cd119e9af00ab7ae9402c2"},"event":{"created":"2026-05-31T04:15:08.1331694+00:00","severity":2,"timezone":"Coordinated Universal Time"},"host":{"os":{"full":"Ubuntu 24.04.4 LTS","platform":"Unix","version":"7.0.0.22"},"architecture":"X64","hostname":"rabbitmq-publisher-job-29670015-6g2pd"},"process":{"name":"RabbitMq.Publisher","pid":1,"thread.id":8,"thread.name":".NET TP Worker","title":""},"service":{"name":"RabbitMq.Publisher","type":"dotnet","version":"10.0+a5ac3391ca8f0c09d3b5900b4f6546906de68119"},"user":{"domain":"rabbitmq-publisher-job-29670015-6g2pd","name":"root"}}
+```
+
 # Subscriber
 
 ```
-[kern-subscriber-0 kern-subscriber] {"@timestamp":"2026-05-30T10:45:02.9677738+00:00","log.level":"Information","message":"Message1AckNackConsumer [x] Received kern.info: Hello World!!! @ 05/30/2026 10:45:02 +00:00","ecs.version":"9.0.0","log":{"logger":"RabbitMq.Subscriber.Message1AckNackConsumer"},"labels":{"MessageTemplate":"Message1AckNackConsumer [x] Received kern.info: Hello World!!! @ 05/30/2026 10:45:02 +00:00"},"agent":{"type":"Elastic.CommonSchema.Serilog","version":"9.0.0+608d9254e808806db6cd119e9af00ab7ae9402c2"},"event":{"created":"2026-05-30T10:45:02.9677738+00:00","severity":2,"timezone":"Coordinated Universal Time"},"host":{"os":{"full":"Ubuntu 24.04.4 LTS","platform":"Unix","version":"7.0.0.22"},"architecture":"X64","hostname":"kern-subscriber-0"},"process":{"name":"RabbitMq.Subscriber","pid":1,"thread.id":25,"thread.name":".NET TP Worker","title":""},"service":{"name":"RabbitMq.Subscriber","type":"dotnet","version":"10.0+58d2db2501ebb92cc66ad05a703eeded13b00a07"},"user":{"domain":"kern-subscriber-0","name":"root"}}
+[kern-subscriber-0 kern-subscriber] {"@timestamp":"2026-05-31T04:15:08.1394613+00:00","log.level":"Information","message":"Message1AckNackConsumer [x] Received kern.info: Hello World!!! @ 05/31/2026 04:15:08 +00:00","ecs.version":"9.0.0","log":{"logger":"RabbitMq.Subscriber.Message1AckNackConsumer"},"labels":{"MessageTemplate":"Message1AckNackConsumer [x] Received kern.info: Hello World!!! @ 05/31/2026 04:15:08 +00:00"},"agent":{"type":"Elastic.CommonSchema.Serilog","version":"9.0.0+608d9254e808806db6cd119e9af00ab7ae9402c2"},"event":{"created":"2026-05-31T04:15:08.1394613+00:00","severity":2,"timezone":"Coordinated Universal Time"},"host":{"os":{"full":"Ubuntu 24.04.4 LTS","platform":"Unix","version":"7.0.0.22"},"architecture":"X64","hostname":"kern-subscriber-0"},"process":{"name":"RabbitMq.Subscriber","pid":1,"thread.id":38,"thread.name":".NET TP Worker","title":""},"service":{"name":"RabbitMq.Subscriber","type":"dotnet","version":"10.0+a5ac3391ca8f0c09d3b5900b4f6546906de68119"},"user":{"domain":"kern-subscriber-0","name":"root"}}
 ```
 
 # Visual Studio
