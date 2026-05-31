@@ -1,13 +1,13 @@
-﻿using RabbitMq.Core.Interfaces;
+﻿using RabbitMQ.Core.Interfaces;
 using RabbitMQ.Client.Exceptions;
 using System;
 using System.IO;
 using System.Threading.Tasks;
 using Xunit;
-namespace RabbitMq.UnitTests
+namespace RabbitMQ.UnitTests
 {
 
-    public class RabbitMqBusTests
+    public class RabbitMQBusTests
     {
 
         [Fact]
@@ -102,7 +102,7 @@ namespace RabbitMq.UnitTests
             return appBuilder.Build();
         }
 #if false
-        private static IDependencyContainer Initialize(Action<InMemoryRabbitMqRouter> routerConfiguration)
+        private static IDependencyContainer Initialize(Action<InMemoryRabbitMQRouter> routerConfiguration)
         {
             var appBuilder = new TestAppInitializer<Startup>(new Startup(routerConfiguration));
             return appBuilder.Build();

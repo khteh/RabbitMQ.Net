@@ -1,13 +1,13 @@
 using System;
 using Polly;
 using Microsoft.AspNetCore.Builder;
-namespace RabbitMq.UnitTests
+namespace RabbitMQ.UnitTests
 {
     public class Startup
     {
 #if false
-        Action<InMemoryRabbitMqRouter> _routerConfiguration;
-        public Startup(Action<InMemoryRabbitMqRouter> routerConfiguration)
+        Action<InMemoryRabbitMQRouter> _routerConfiguration;
+        public Startup(Action<InMemoryRabbitMQRouter> routerConfiguration)
         {
             _routerConfiguration = routerConfiguration;
         }
@@ -15,17 +15,17 @@ namespace RabbitMq.UnitTests
         public virtual void Initialize(IApplicationBuilder app)
         {
             app.UseSerilogFileLogger(
-                "RabbitMq.UnitTests",
+                "RabbitMQ.UnitTests",
                 "test/logging"
             );
-            // app.UseSerilogConsoleLogger("RabbitMq.UnitTests", Serilog.Events.LogEventLevel.Verbose);
+            // app.UseSerilogConsoleLogger("RabbitMQ.UnitTests", Serilog.Events.LogEventLevel.Verbose);
             app.UseSimpleInjector(containerBuilder =>
             {
                 containerBuilder.LoadModule<TestModule>();
             });
             app.UseAppSettingsSecureConfigurationStore();
             app.UseAppSettingsConfigurationStore();
-            app.UseRabbitMq(config =>
+            app.UseRabbitMQ(config =>
             {
                 config
                 .AddInMemoryRabbitMQConnectionConfiguration(router =>
@@ -40,7 +40,7 @@ namespace RabbitMq.UnitTests
                     router.QueueBind("test1.q_mock", "testExchange3", "test1.q_mock");
                     //_routerConfiguration?.Invoke(router);
                 })
-                // .DiscoverRabbitMqClusteredConnection("test/rabbitMq1", "test/rabbitMq1-credentials")
+                // .DiscoverRabbitMQClusteredConnection("test/rabbitMq1", "test/rabbitMq1-credentials")
                 .AddPublishRetryPolicyConfiguration((policy) => policy.WaitAndRetryAsync(2, (retryCount) =>
                                               {
                                                   return TimeSpan.FromSeconds(1);

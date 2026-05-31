@@ -1,0 +1,60 @@
+using System;
+using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
+using Polly;
+using Polly.CircuitBreaker;
+using Polly.Retry;
+using RabbitMQ.Core.Extensions;
+using RabbitMQ.Core.Interfaces;
+
+namespace RabbitMQ.Core.Consumer
+{
+    public sealed class RabbitMQSubscriberFactory<TMessage> : IRabbitMQSubscriberFactory<TMessage>
+        where TMessage : class
+    {
+        private readonly ILoggerFactory _loggerFactory;
+        private readonly ILogger<RabbitMQSubscriberFactory<TMessage>> _logger;
+        private Func<PolicyBuilder, AsyncRetryPolicy> _subscribeRetryPolicyAction;
+        public RabbitMQSubscriberFactory(ILoggerFactory loggerFactory, ILogger<RabbitMQSubscriberFactory<TMessage>> logger)
+        {
+            _loggerFactory = loggerFactory;
+            _logger = logger;
+            //_subscribeRetryPolicyAction = (policy) => policy.WaitAndRetryAsync(6, retryAttempt => TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)) + TimeSpan.FromMilliseconds(new Random().Next(0, 100)) );
+            _subscribeRetryPolicyAction = (policy) => policy.WaitAndRetryAsync(new[]
+                                               {
+                                                TimeSpan.FromSeconds(1),
+                                                TimeSpan.FromSeconds(2),
+                                                TimeSpan.FromSeconds(3)
+                                              }, (ex, t, i, context) =>
+                                              {
+                                                  _logger.LogInformation($"Wait And Retry Async: Subscribe retry count {i}, ex:{ex}");
+                                              });
+        }
+
+        /// <summary>
+        /// Gets a Typed Subscriber
+        /// Note : The reference to this is via dynamic
+        /// </summary>
+        /// <param name="queueName">Queue Name</param>
+        /// <param name="autoAck">Auto ACK</param>
+        /// <param name="connection">Connection</param>
+        /// <param name="retryPolicyBuilderAction">Retry Policy</param>
+        /// <param name="messageSerializer">Message Serializer</param>
+        /// <returns></returns>
+        public IRabbitMQSubscriber<TMessage> GetRabbitMQSubscriber(ISubscriberProperties properties, IQueueProperties queueProperties, bool autoAck,
+                IRabbitMQConnection connection, IRabbitMQConsumer<TMessage> consumer,
+                Func<PolicyBuilder, AsyncRetryPolicy> retryPolicyBuilderAction)
+        {
+            PolicyBuilder policyBuilder = Policy.Handle<Exception>(ex => ex.IsTransientRabbitMQException());
+            AsyncRetryPolicy retryPolicy = retryPolicyBuilderAction != null ? retryPolicyBuilderAction(policyBuilder) : _subscribeRetryPolicyAction(policyBuilder);
+            // Circuit breaker to avoid continous retries, close the circuit for 5 min
+            AsyncCircuitBreakerPolicy circuitBreakerPolicy = Policy
+                .Handle<Exception>(ex => ex.IsTransientRabbitMQException())
+                .CircuitBreakerAsync(3,
+                TimeSpan.FromMinutes(5),
+                (ex, t) => { _logger.LogInformation($"Circuit Breaker:Subscribing to queue:{queueProperties.Name}, retries have been broken for the break Time"); },
+                () => { _logger.LogInformation($"Circuit Breaker:Subscribing to queue:{queueProperties.Name}, retries have been restored after the break Time"); });
+            return new RabbitMQSubscriber<TMessage>(_loggerFactory.CreateLogger<RabbitMQSubscriber<TMessage>>(), consumer, properties, queueProperties, autoAck, connection, retryPolicy);
+        }
+    }
+}

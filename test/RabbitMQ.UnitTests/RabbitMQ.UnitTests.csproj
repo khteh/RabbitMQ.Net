@@ -15,6 +15,6 @@
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.10" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\RabbitMq.Core\RabbitMq.Core.csproj" />
+    <ProjectReference Include="..\..\src\RabbitMQ.Core\RabbitMQ.Core.csproj" />
   </ItemGroup>
 </Project>

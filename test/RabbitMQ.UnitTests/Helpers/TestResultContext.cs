@@ -2,7 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
-namespace RabbitMq.UnitTests.Helpers
+namespace RabbitMQ.UnitTests.Helpers
 {
     public sealed class TestResultContext
     {

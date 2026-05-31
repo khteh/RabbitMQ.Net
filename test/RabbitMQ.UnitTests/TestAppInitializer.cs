@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace RabbitMq.UnitTests;
+namespace RabbitMQ.UnitTests;
 
 public sealed class TestAppInitializer
 {

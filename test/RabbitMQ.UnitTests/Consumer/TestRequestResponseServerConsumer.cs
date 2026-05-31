@@ -1,16 +1,16 @@
 ﻿using System.Threading.Tasks;
-using RabbitMq.Core.Consumer;
-using RabbitMq.UnitTests.Helpers;
-namespace RabbitMq.UnitTests.Consumer
+using RabbitMQ.Core.Consumer;
+using RabbitMQ.UnitTests.Helpers;
+namespace RabbitMQ.UnitTests.Consumer
 {
-    public class TestRequestResponseServerConsumer : IRabbitMqConsumer
+    public class TestRequestResponseServerConsumer : IRabbitMQConsumer
     {
         private TestResultContext _context;
         public TestRequestResponseServerConsumer(TestResultContext context)
         {
             _context = context;
         }
-        public async Task Consume(IRabbitMqConsumeContext consumeContext)
+        public async Task Consume(IRabbitMQConsumeContext consumeContext)
         {
             await consumeContext.Respond<TestResponse>(new TestResponse() { Title = consumeContext.Message.Title + "Response" });
             _context.IncrementSuccessCount();

@@ -1,16 +1,16 @@
 ﻿using System.Threading.Tasks;
-using RabbitMq.Core.Consumer;
-using RabbitMq.UnitTests.Helpers;
-namespace RabbitMq.UnitTests.Consumer
+using RabbitMQ.Core.Consumer;
+using RabbitMQ.UnitTests.Helpers;
+namespace RabbitMQ.UnitTests.Consumer
 {
-    public class TestMessage1Consumer : IRabbitMqConsumer
+    public class TestMessage1Consumer : IRabbitMQConsumer
     {
         private TestResultContext _context;
         public TestMessage1Consumer(TestResultContext context)
         {
             _context = context;
         }
-        public async Task Consume(IRabbitMqConsumeContext consumeContext)
+        public async Task Consume(IRabbitMQConsumeContext consumeContext)
         {
             try
             {

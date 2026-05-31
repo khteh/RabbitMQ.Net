@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System;
 
-namespace RabbitMq.UnitTests
+namespace RabbitMQ.UnitTests
 {
     /// <summary>
     /// An implementation of <see cref="IModule"/> to register the TestModule services.
@@ -19,10 +19,10 @@ namespace RabbitMq.UnitTests
             var testResultContext = new TestResultContext();
             services.Register<TestResultContext>(() => testResultContext);
 
-            services.RegisterRabbitMqMessageConsumer<TestMessage1, TestMessage1Consumer>();
-            services.RegisterRabbitMqMessageConsumer<TestMessage1, TestMessage1AckNackConsumer>();
+            services.RegisterRabbitMQMessageConsumer<TestMessage1, TestMessage1Consumer>();
+            services.RegisterRabbitMQMessageConsumer<TestMessage1, TestMessage1AckNackConsumer>();
 
-            services.RegisterRabbitMqMessageConsumer<TestRequest1, TestRequestResponseServerConsumer>();
+            services.RegisterRabbitMQMessageConsumer<TestRequest1, TestRequestResponseServerConsumer>();
         }
     }
 }

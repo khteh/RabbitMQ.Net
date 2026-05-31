@@ -17,7 +17,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/src/RabbitMq.Core/RabbitMq.Core.csproj",
+                "${workspaceFolder}/src/RabbitMQ.Core/RabbitMQ.Core.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -29,7 +29,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/src/RabbitMq.Core/RabbitMq.Core.csproj",
+                "${workspaceFolder}/src/RabbitMQ.Core/RabbitMQ.Core.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary",
                 "-c",
@@ -43,7 +43,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/src/RabbitMq.Core/RabbitMq.Core.csproj",
+                "${workspaceFolder}/src/RabbitMQ.Core/RabbitMQ.Core.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary",
                 "-c",
@@ -73,7 +73,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/src/RabbitMq.Publisher/RabbitMq.Publisher.csproj",
+                "${workspaceFolder}/src/RabbitMQ.Publisher/RabbitMQ.Publisher.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -85,7 +85,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/src/RabbitMq.Subscriber/RabbitMq.Subscriber.csproj",
+                "${workspaceFolder}/src/RabbitMQ.Subscriber/RabbitMQ.Subscriber.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],
@@ -97,7 +97,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/src/RabbitMq.Publisher/RabbitMq.Publisher.csproj",
+                "${workspaceFolder}/src/RabbitMQ.Publisher/RabbitMQ.Publisher.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary",
                 "-c",
@@ -111,7 +111,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/src/RabbitMq.Subscriber/RabbitMq.Subscriber.csproj",
+                "${workspaceFolder}/src/RabbitMQ.Subscriber/RabbitMQ.Subscriber.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary",
                 "-c",
@@ -125,7 +125,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/src/RabbitMq.Publisher/RabbitMq.Publisher.csproj",
+                "${workspaceFolder}/src/RabbitMQ.Publisher/RabbitMQ.Publisher.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary",
                 "-c",
@@ -143,7 +143,7 @@
             "type": "process",
             "args": [
                 "publish",
-                "${workspaceFolder}/src/RabbitMq.Subscriber/RabbitMq.Subscriber.csproj",
+                "${workspaceFolder}/src/RabbitMQ.Subscriber/RabbitMQ.Subscriber.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary",
                 "-c",
