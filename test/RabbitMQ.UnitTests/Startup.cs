@@ -5,13 +5,13 @@ namespace RabbitMq.UnitTests
 {
     public class Startup
     {
-        #if false
+#if false
         Action<InMemoryRabbitMqRouter> _routerConfiguration;
         public Startup(Action<InMemoryRabbitMqRouter> routerConfiguration)
         {
             _routerConfiguration = routerConfiguration;
         }
-        #endif
+#endif
         public virtual void Initialize(IApplicationBuilder app)
         {
             app.UseSerilogFileLogger(
@@ -21,14 +21,14 @@ namespace RabbitMq.UnitTests
             // app.UseSerilogConsoleLogger("RabbitMq.UnitTests", Serilog.Events.LogEventLevel.Verbose);
             app.UseSimpleInjector(containerBuilder =>
             {
-                containerBuilder.LoadModule<TestModule>();              
-			});
+                containerBuilder.LoadModule<TestModule>();
+            });
             app.UseAppSettingsSecureConfigurationStore();
             app.UseAppSettingsConfigurationStore();
             app.UseRabbitMq(config =>
             {
                 config
-                .AddInMemoryRabbitMqConfiguration(router =>
+                .AddInMemoryRabbitMQConnectionConfiguration(router =>
                 {
                     router.ExchangeDeclare("testExchange1");
                     router.ExchangeDeclare("testExchange2");
@@ -50,6 +50,6 @@ namespace RabbitMq.UnitTests
                 .Subscribe<TestMessage1>("test1.q2", true)
                 .Subscribe<TestRequest1>("test1.reqResp1");
             });
-		}
-	}
+        }
+    }
 }

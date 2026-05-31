@@ -13,20 +13,22 @@ public class PublisherWorker : BackgroundService
     private readonly ILogger<PublisherWorker> _logger;
     private readonly IHostApplicationLifetime _hostAppLifetime;
     private readonly SharedState _sharedState;
-    protected readonly RabbitMQConfig _rabbitMqOptions;
+    protected readonly RabbitMQConnectionConfig _rabbitMqOptions;
     protected readonly RabbitMQQueueConfig _rabbitMqQueueOptions;
+    protected readonly RabbitMQChannelConfiguration _rabbitMqChannelOptions;
     private readonly QueueProperties _queueProperties;
     private readonly IRabbitMqConnection _connection;
     private readonly PublishingProperties _publishingProperties;
     private IMessage _message;
     private IRabbitMqChannel _channel;
 
-    public PublisherWorker(IHostApplicationLifetime hostApplicationLifetime, ILogger<PublisherWorker> logger, IOptions<RabbitMQConfig> rabbitMqOptions, IOptions<RabbitMQQueueConfig> rabbitMqQueueOptions, SharedState sharedState, IRabbitMqConnection connection, IMessage message)
+    public PublisherWorker(IHostApplicationLifetime hostApplicationLifetime, ILogger<PublisherWorker> logger, IOptions<RabbitMQConnectionConfig> rabbitMqOptions, IOptions<RabbitMQChannelConfiguration> rabbitMqChannelOptions, IOptions<RabbitMQQueueConfig> rabbitMqQueueOptions, SharedState sharedState, IRabbitMqConnection connection, IMessage message)
     {
         _logger = logger;
         _hostAppLifetime = hostApplicationLifetime;
         _sharedState = sharedState;
         _rabbitMqOptions = rabbitMqOptions.Value;
+        _rabbitMqChannelOptions = rabbitMqChannelOptions.Value;
         _rabbitMqQueueOptions = rabbitMqQueueOptions.Value;
         _connection = connection;
         _message = message;

@@ -1,6 +1,6 @@
 namespace RabbitMq.Core.Configuration;
 
-public class RabbitMQConfig
+public sealed class RabbitMQConnectionConfig
 {
     public string ConnectionName { get; set; }
     public string Endpoint { get; set; }

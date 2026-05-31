@@ -1,10 +1,3 @@
-using System.Net;
-using System.Reflection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using RabbitMq.Core.Events;
 using RabbitMq.Core.Exceptions;
@@ -14,6 +7,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text.Json;
 using System.Text;
+using System.Buffers.Binary;
 namespace RabbitMq.Core;
 
 public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
@@ -24,8 +18,11 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
     private IDictionary<string, AsyncEventingBasicConsumer> _consumers;
     private readonly ILogger<RabbitMqChannel> _logger;
     public event AsyncEventHandler<RabbitMqChannelDisconnectedEventArgs> Disconnected;
-
-    public RabbitMqChannel(ILogger<RabbitMqChannel> logger, IChannel channel, string exchange, string type, IQueueProperties queueProperties, string queueName)
+    public string Id
+    {
+        get => _channelId;
+    }
+    public RabbitMqChannel(ILogger<RabbitMqChannel> logger, IChannel channel, string exchange, string queueName)
     {
         _channel = channel;
         _channelId = _channel.ChannelNumber.ToString();
@@ -34,14 +31,35 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
         _queue = queueName;
         _channel.ChannelShutdownAsync += OnChannelShutdown;
         _exchange = exchange;
+#if false
+        _channel.BasicReturnAsync += BasicReturnAsyncHandler;
+        _channel.BasicAcksAsync += BasicAcksAsyncHandler;
+        _channel.BasicNacksAsync += BasicNacksAsyncHandler;
+#endif
         _logger.LogInformation($"Channel Created {_channel.ChannelNumber}, Queue: {_queue}");
     }
-
-    public string Id
+    private async Task BasicAcksAsyncHandler(object sender, BasicAckEventArgs ea)
     {
-        get => _channelId;
+        _logger.LogInformation($"Message with sequence number: {ea.DeliveryTag} has been acknowledged (multiple: {ea.Multiple})");
     }
-
+    private async Task BasicNacksAsyncHandler(object sender, BasicNackEventArgs ea)
+    {
+        _logger.LogWarning($"[WARNING] message sequence number: {ea.DeliveryTag} has been nacked (multiple: {ea.Multiple})");
+    }
+    private async Task BasicReturnAsyncHandler(object sender, BasicReturnEventArgs ea)
+    {
+        ulong sequenceNumber = 0;
+        IReadOnlyBasicProperties props = ea.BasicProperties;
+        if (props.Headers is not null)
+        {
+            object? maybeSeqNum = props.Headers[Constants.PublishSequenceNumberHeader];
+            if (maybeSeqNum is not null)
+            {
+                sequenceNumber = BinaryPrimitives.ReadUInt64BigEndian((byte[])maybeSeqNum);
+            }
+        }
+        _logger.LogWarning($"[WARNING] message sequence number {sequenceNumber} has been basic.return-ed");
+    }
     private async Task OnChannelShutdown(object sender, ShutdownEventArgs e)
     {
         _logger.LogInformation($"Channel Shutdown {_channelId}, Reason: {e.Cause}, Reply Text: {e.ReplyText}");
@@ -61,54 +79,63 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
         configuration?.Invoke(properties);
         return await Publish<TMessage>(message, properties);
     }
-
+    /// <summary>
+    /// https://www.rabbitmq.com/tutorials/tutorial-seven-dotnet
+    /// Publish a message as usual and wait for its confirmation by await-ing the task returned by BasicPublishAsync. 
+    /// The await returns as soon as the message has been confirmed. 
+    /// If the message is is nack-ed or returned (meaning the broker could not take care of it for some reason), the method will throw an exception. 
+    /// The handling of the exception usually consists in logging an error message and/or retrying to send the message.
+    /// </summary>
+    /// <typeparam name="TMessage"></typeparam>
+    /// <param name="message"></param>
+    /// <param name="properties"></param>
+    /// <returns></returns>
     public async Task<PublishResult> Publish<TMessage>(TMessage message, IPublishingProperties properties) where TMessage : class
     {
         EnsureChannelHealthy();
         byte[] body = JsonSerializer.SerializeToUtf8Bytes(message);
-
         // Set a default time interval for the wait
         TaskCompletionSource<PublishResult> returnReceivedTask = new TaskCompletionSource<PublishResult>(default(TaskCreationOptions));
-
         AsyncEventHandler<BasicReturnEventArgs> basicReturnHandler = async (o, e) =>
         {
+            _logger.LogError($"Publish message returned Code: {e.ReplyCode}, Reply: {e.ReplyText}, Exchange: {properties.Exchange}, ExchangeType: {properties.ExchangeType}, RoutingKey: {properties.RoutingKey}, Queue: {properties.Queue}");
             returnReceivedTask.TrySetException(new InvalidOperationException($"Publish message returned Code: {e.ReplyCode}, Reply: {e.ReplyText}, Exchange: {properties.Exchange}, ExchangeType: {properties.ExchangeType}, RoutingKey: {properties.RoutingKey}, Queue: {properties.Queue}"));
         };
-
+        AsyncEventHandler<BasicNackEventArgs> basicNackHandler = async (o, e) =>
+        {
+            _logger.LogError($"Published Message NACK-ed with delivery Tag {e.DeliveryTag}, multiple: {e.Multiple}");
+            returnReceivedTask.TrySetException(new InvalidOperationException($"Published Message NACK-ed with delivery Tag {e.DeliveryTag}, multiple: {e.Multiple}, Exchange: {properties.Exchange}, ExchangeType: {properties.ExchangeType}, RoutingKey: {properties.RoutingKey}, Queue: {properties.Queue}"));
+        };
         AsyncEventHandler<BasicAckEventArgs> basicAckHandler = async (o, e) =>
         {
             _logger.LogInformation($"Published Message Accepted with delivery Tag {e.DeliveryTag}, multiple: {e.Multiple}");
             returnReceivedTask.TrySetResult(new PublishResult(true, e.DeliveryTag, e.Multiple, null));
         };
-
-        if (properties.EnablePublisherConfirm)
+        await _channelLock.WaitAsync();
+        try
         {
-            await _channelLock.WaitAsync();
-            try
+            if (properties.EnablePublisherConfirm)
             {
                 _channel.BasicAcksAsync += basicAckHandler;
+                _channel.BasicNacksAsync += basicNackHandler;
             }
-            finally
+            else
             {
-                _channelLock.Release();
+                _channel.BasicAcksAsync -= basicAckHandler;
+                _channel.BasicNacksAsync -= basicNackHandler;
             }
-        }
-        if (properties.EnsureDeliveryToQueue)
-        {
-            await _channelLock.WaitAsync();
-            try
-            {
+            if (properties.EnsureDeliveryToQueue)
                 _channel.BasicReturnAsync += basicReturnHandler;
-            }
-            finally
-            {
-                _channelLock.Release();
-            }
+            else
+                _channel.BasicReturnAsync -= basicReturnHandler;
         }
-        else if (!properties.EnablePublisherConfirm && !properties.EnsureDeliveryToQueue)
+        finally
         {
-            returnReceivedTask.TrySetResult(new PublishResult(true, 0, false, null));
+            _channelLock.Release();
         }
+
+        if (!properties.EnablePublisherConfirm && !properties.EnsureDeliveryToQueue)
+            returnReceivedTask.TrySetResult(new PublishResult(true, 0, false, null));
         await _channelLock.WaitAsync();
         try
         {
@@ -123,51 +150,15 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
         }
         finally
         {
+            if (properties.EnablePublisherConfirm)
+            {
+                _channel.BasicAcksAsync -= basicAckHandler;
+                _channel.BasicNacksAsync -= basicNackHandler;
+            }
+            if (properties.EnsureDeliveryToQueue)
+                _channel.BasicReturnAsync -= basicReturnHandler;
             _channelLock.Release();
         }
-#if false
-        using (CancellationTokenSource ct = new CancellationTokenSource(properties.PublishReturnWaitTime))
-            try
-            {
-                ct.Token.Register(async () =>
-                {
-                    if (_channel != null)
-                        if (properties.EnsureDeliveryToQueue)
-                        {
-                            await _channelLock.WaitAsync();
-                            try
-                            {
-                                _channel.BasicReturnAsync -= basicReturnHandler;
-                            }
-                            finally
-                            {
-                                _channelLock.Release();
-                            }
-                        }
-                    if (properties.EnablePublisherConfirm)
-                    {
-                        await _channelLock.WaitAsync();
-                        try
-                        {
-                            _channel.BasicAcksAsync -= basicAckHandler;
-                        }
-                        finally
-                        {
-                            _channelLock.Release();
-                        }
-                    }
-                    returnReceivedTask.TrySetException(new TimeoutException($"Publishing message of type {typeof(TMessage).Name} didn't get accepted in time {properties.PublishReturnWaitTime}"));
-                }, useSynchronizationContext: false);
-                var result = await returnReceivedTask.Task.ConfigureAwait(false);
-                _logger.LogInformation($"Published Message type {typeof(TMessage).Name}, result:{result}");
-                return result;
-            }
-            catch (Exception e)
-            {
-                _logger.LogCritical($"{nameof(RabbitMqChannel)}.{nameof(Publish)} Exception! {e.Message} {e.GetInnerMessage()} {e.StackTrace}");
-                return new PublishResult(false, 0, false, new List<Error>() { new Error(HttpStatusCode.InternalServerError.ToString(), $"Exception! {e.Message} {e.GetInnerMessage()} {e.StackTrace}") });
-            }
-#endif
         var result = await returnReceivedTask.Task.ConfigureAwait(false);
         _logger.LogInformation($"Published Message type {typeof(TMessage).Name}, result:{result}");
         return result;

@@ -1,6 +1,6 @@
 namespace RabbitMq.Core.Configuration;
 
-public class RabbitMQQueueConfig
+public sealed class RabbitMQQueueConfig
 {
     public bool Temporary { get; set; }
     public bool Durable { get; set; }
