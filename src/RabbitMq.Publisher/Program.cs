@@ -29,12 +29,12 @@ try
          services.AddOptions();
          IConfigurationSection RabbitMQConnectionConfigSection = context.Configuration.GetSection(nameof(RabbitMQConnectionConfig));
          IConfigurationSection rabbitMqQueueConfigSection = context.Configuration.GetSection(nameof(RabbitMQQueueConfig));
-         IConfigurationSection rabbitMqChannelConfigSection = context.Configuration.GetSection(nameof(RabbitMQChannelConfiguration));
+         IConfigurationSection rabbitMqChannelConfigSection = context.Configuration.GetSection(nameof(RabbitMQChannelConfig));
          RabbitMQConnectionConfigSection["UserName"] = context.Configuration["UserName"];
          RabbitMQConnectionConfigSection["Password"] = context.Configuration["Password"];
          services.Configure<RabbitMQConnectionConfig>(RabbitMQConnectionConfigSection);
          services.Configure<RabbitMQQueueConfig>(rabbitMqQueueConfigSection);
-         services.Configure<RabbitMQChannelConfiguration>(rabbitMqChannelConfigSection);
+         services.Configure<RabbitMQChannelConfig>(rabbitMqChannelConfigSection);
          services.AddHostedService<PublisherWorker>()
              .AddSingleton<IConfiguration>(context.Configuration)
              .AddSingleton<SharedState>()

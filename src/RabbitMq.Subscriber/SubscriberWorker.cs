@@ -14,7 +14,7 @@ public class SubscriberWorker : BackgroundService
     private readonly IHostApplicationLifetime _hostAppLifetime;
     private readonly SharedState _sharedState;
     protected readonly RabbitMQConnectionConfig _rabbitMqOptions;
-    protected readonly RabbitMQChannelConfiguration _rabbitMqChannelOptions;
+    protected readonly RabbitMQChannelConfig _rabbitMqChannelOptions;
     protected readonly RabbitMQQueueConfig _rabbitMqQueueOptions;
     private readonly IRabbitMqSubscriberFactory<IMessage> _subscriberFactory;
     private readonly IRabbitMqSubscriber<IMessage> _subscriber;
@@ -24,7 +24,7 @@ public class SubscriberWorker : BackgroundService
     private readonly IRabbitMqConnection _connection;
     private bool _isConnected = false;
 
-    public SubscriberWorker(IHostApplicationLifetime hostApplicationLifetime, ILogger<SubscriberWorker> logger, IOptions<RabbitMQConnectionConfig> rabbitMqOptions, IOptions<RabbitMQChannelConfiguration> rabbitMqChannelOptions, IOptions<RabbitMQQueueConfig> rabbitMqQueueOptions, SharedState sharedState, IRabbitMqSubscriberFactory<IMessage> subscriberFactory, IRabbitMqConnection connection, IRabbitMqConsumer<IMessage> consumer)
+    public SubscriberWorker(IHostApplicationLifetime hostApplicationLifetime, ILogger<SubscriberWorker> logger, IOptions<RabbitMQConnectionConfig> rabbitMqOptions, IOptions<RabbitMQChannelConfig> rabbitMqChannelOptions, IOptions<RabbitMQQueueConfig> rabbitMqQueueOptions, SharedState sharedState, IRabbitMqSubscriberFactory<IMessage> subscriberFactory, IRabbitMqConnection connection, IRabbitMqConsumer<IMessage> consumer)
     {
         _logger = logger;
         _hostAppLifetime = hostApplicationLifetime;

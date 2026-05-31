@@ -15,14 +15,14 @@ public class PublisherWorker : BackgroundService
     private readonly SharedState _sharedState;
     protected readonly RabbitMQConnectionConfig _rabbitMqOptions;
     protected readonly RabbitMQQueueConfig _rabbitMqQueueOptions;
-    protected readonly RabbitMQChannelConfiguration _rabbitMqChannelOptions;
+    protected readonly RabbitMQChannelConfig _rabbitMqChannelOptions;
     private readonly QueueProperties _queueProperties;
     private readonly IRabbitMqConnection _connection;
     private readonly PublishingProperties _publishingProperties;
     private IMessage _message;
     private IRabbitMqChannel _channel;
 
-    public PublisherWorker(IHostApplicationLifetime hostApplicationLifetime, ILogger<PublisherWorker> logger, IOptions<RabbitMQConnectionConfig> rabbitMqOptions, IOptions<RabbitMQChannelConfiguration> rabbitMqChannelOptions, IOptions<RabbitMQQueueConfig> rabbitMqQueueOptions, SharedState sharedState, IRabbitMqConnection connection, IMessage message)
+    public PublisherWorker(IHostApplicationLifetime hostApplicationLifetime, ILogger<PublisherWorker> logger, IOptions<RabbitMQConnectionConfig> rabbitMqOptions, IOptions<RabbitMQChannelConfig> rabbitMqChannelOptions, IOptions<RabbitMQQueueConfig> rabbitMqQueueOptions, SharedState sharedState, IRabbitMqConnection connection, IMessage message)
     {
         _logger = logger;
         _hostAppLifetime = hostApplicationLifetime;
