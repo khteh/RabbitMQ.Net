@@ -159,8 +159,8 @@ public class RabbitMqChannel : DisposableObject, IRabbitMqChannel
                 _channel.BasicReturnAsync -= basicReturnHandler;
             _channelLock.Release();
         }
-        var result = await returnReceivedTask.Task.ConfigureAwait(false);
-        _logger.LogInformation($"Published Message type {typeof(TMessage).Name}, result:{result}");
+        PublishResult result = await returnReceivedTask.Task.ConfigureAwait(false);
+        _logger.LogInformation($"{nameof(RabbitMqChannel)}.{nameof(Publish)} result:{result.Success}, deliveryTag: {result.DeliveryTag}, multiple: {result.Multiple}");
         return result;
     }
 
