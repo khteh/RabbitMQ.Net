@@ -10,7 +10,6 @@ using RabbitMQ.Core.Events;
 using RabbitMQ.Core.Exceptions;
 using RabbitMQ.Core.Interfaces;
 using RabbitMQ.Client.Events;
-
 namespace RabbitMQ.Core.Consumer;
 
 public sealed class RabbitMQSubscriber<TMessage> : DisposableObject, IRabbitMQSubscriber<TMessage>
@@ -25,8 +24,7 @@ public sealed class RabbitMQSubscriber<TMessage> : DisposableObject, IRabbitMQSu
     private readonly ILogger<RabbitMQSubscriber<TMessage>> _logger;
     public readonly AsyncRetryPolicy _subscriptionRetryPolicy;
     private readonly IRabbitMQConsumer<TMessage> _consumer;
-    public RabbitMQSubscriber(ILogger<RabbitMQSubscriber<TMessage>> logger, IRabbitMQConsumer<TMessage> consumer,
-                ISubscriberProperties properties, IQueueProperties queueProperties, bool autoAck, IRabbitMQConnection connection, AsyncRetryPolicy policy)
+    public RabbitMQSubscriber(ILogger<RabbitMQSubscriber<TMessage>> logger, IRabbitMQConsumer<TMessage> consumer, ISubscriberProperties properties, IQueueProperties queueProperties, bool autoAck, IRabbitMQConnection connection, AsyncRetryPolicy policy)
     {
         _consumer = consumer;
         _logger = logger;
@@ -39,9 +37,28 @@ public sealed class RabbitMQSubscriber<TMessage> : DisposableObject, IRabbitMQSu
     public async Task Connect()
     {
         EnsureNotDisposing();
-        await _subscriptionRetryPolicy.ExecuteAsync(() => Task.Run(() => Subscribe()));
+        await _subscriptionRetryPolicy.ExecuteAsync(Subscribe);
     }
-
+    private async Task Subscribe()
+    {
+        try
+        {
+            DisposeChannel();
+            _channel = await _connection.CreateChannel(_properties.Exchange, _properties.ExchangeType, string.Empty, _queueProperties);
+            _consumerTag = await _channel.Subscribe(_autoAck, OnConsume, OnSubscriberDisconnected, _properties.Bindings);
+            // Only List on disconnected if we are able to subscribe to it
+            _channel.Disconnected += OnChannelDisconnected;
+            _logger.LogInformation($"Subscribed to {_queueProperties.Name}, autoAck {_autoAck}, consumer Tag : {_consumerTag} on channel {_channel.Id}. Exchange: {_properties.Exchange}, ExchangeType: {_properties.ExchangeType}, Bindings: {_properties.Bindings.Count()} {(_properties.Bindings.Count() == 1 ? _properties.Bindings.First() : string.Empty)}");
+        }
+        catch (Exception e)
+        {
+            _logger.LogError($"Failed to subscribe to queue {_queueProperties.Name} on channel. Exchange: {_properties.Exchange}, ExchangeType: {_properties.ExchangeType}, Bindings: {_properties.Bindings.Count()} {(_properties.Bindings.Count() == 1 ? _properties.Bindings.First() : string.Empty)}. Exception: {e}");
+            if (_channel != null)
+                _channel.Disconnected -= OnChannelDisconnected;
+            DisposeChannel();
+            throw;
+        }
+    }
     public async Task OnConsume(object sender, BasicDeliverEventArgs arguments)
     {
         try
@@ -91,41 +108,11 @@ public sealed class RabbitMQSubscriber<TMessage> : DisposableObject, IRabbitMQSu
             }
         }
     }
-
-    protected override void Disposing()
-    {
-        DisposeChannel();
-        base.Disposing();
-    }
-
-    private async Task Subscribe()
-    {
-        _logger.LogInformation($"{nameof(RabbitMQSubscriber<TMessage>)}.{nameof(Subscribe)} Exchange: {_properties.Exchange}, ExchangeType: {_properties.ExchangeType}, Queue: {_queueProperties.Name}, autoAck {_autoAck}, {_properties.Bindings.Count()} bindings {(_properties.Bindings.Count() == 1 ? _properties.Bindings.First() : string.Empty)}");
-        try
-        {
-            DisposeChannel();
-            _channel = await _connection.CreateChannel(_properties.Exchange, _properties.ExchangeType, string.Empty, _queueProperties);
-            _consumerTag = await _channel.Subscribe(_autoAck, OnConsume, OnSubscriberDisconnected, _properties.Bindings);
-            // Only List on disconnected if we are able to subscribe to it
-            _channel.Disconnected += OnChannelDisconnected;
-            _logger.LogInformation(
-                $"Subscribed to {_queueProperties.Name}, autoAck {_autoAck}, consumer Tag : {_consumerTag} on channel {_channel.Id}");
-        }
-        catch (Exception)
-        {
-            if (_channel != null)
-                _channel.Disconnected -= OnChannelDisconnected;
-            DisposeChannel();
-            throw;
-        }
-    }
     private async Task OnSubscriberDisconnected(object sender, RabbitMQSubscriberDisconnectedEventArgs e)
     {
         _logger.LogInformation($"Subscription Disconnected to {_queueProperties.Name}, consumer Tag {e.SubscriberID}");
-
         if (!e.IsSubscriberRunning && IsDisposeOrDisposing())
             return;
-
         // Try to Reconnect, if the subscription drops due to interruptions
         // possible cases:
         // 1 : We are disposing the channel
@@ -134,14 +121,26 @@ public sealed class RabbitMQSubscriber<TMessage> : DisposableObject, IRabbitMQSu
         //      , but the client channel will not be informed, hence trying to reconnect
         try
         {
-            Connect().ConfigureAwait(false).GetAwaiter().GetResult();
+            await Connect();
         }
         catch (Exception ex)
         {
-            _logger.LogWarning($"Couldn't reconnect the subscriber. ex {ex}");
+            _logger.LogError($"Couldn't reconnect the subscriber. ex {ex}");
         }
     }
-
+    private async Task OnChannelDisconnected(object sender, RabbitMQChannelDisconnectedEventArgs e)
+    {
+        _logger.LogInformation($"Subscription Channel Disconnected for queue {_queueProperties.Name}");
+        DisposeChannel();
+        try
+        {
+            await Connect();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Couldn't reconnect the subscriber to queue {_queueProperties.Name}. Exception! {ex}");
+        }
+    }
     private void EnsureNotDisposing()
     {
         if (IsDisposeOrDisposing())
@@ -151,35 +150,23 @@ public sealed class RabbitMQSubscriber<TMessage> : DisposableObject, IRabbitMQSu
     {
         return IsDisposed || IsDisposing;
     }
-
-    private async Task OnChannelDisconnected(object sender, RabbitMQChannelDisconnectedEventArgs e)
+    protected override void Disposing()
     {
-        _logger.LogInformation($"Subscription Channel Disconnected for queue {_queueProperties.Name}");
-
         DisposeChannel();
-        try
-        {
-            Connect().ConfigureAwait(false).GetAwaiter().GetResult();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Couldn't reconnect the subscriber. ex {ex}");
-        }
+        base.Disposing();
     }
-
     private void DisposeChannel()
     {
         try
         {
             if (_channel != null)
-            {
                 _channel.Dispose();
-            }
             _channel = null;
             _consumerTag = null;
         }
-        catch (Exception)
+        catch (Exception e)
         {
+            _logger.LogError($"Failed to dispose channel channel {_channel.Id}. Exception: {e}");
         }
     }
 }
