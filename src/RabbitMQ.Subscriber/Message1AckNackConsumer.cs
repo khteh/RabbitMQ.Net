@@ -18,7 +18,6 @@ public class Message1AckNackConsumer : IRabbitMQConsumer<IMessage>
     {
         try
         {
-            await Task.Run(() => { });
             //_context.IncrementSuccessCount();
             _logger.LogInformation($"{nameof(Message1AckNackConsumer)} [x] Received {consumeContext.RoutingKey}: {consumeContext.Message.Message} @ {consumeContext.Message.Timestamp}");
             if (_sharedState.SignalEvent.CurrentCount == 0)

@@ -41,7 +41,7 @@ public abstract class DisposableObject : IDisposable
             if (!IsDisposed && disposing)
             {
                 IsDisposing = true;
-                Task.Run(() => Disposing());
+                Task.Run(async () => await Disposing());
             }
         }
         finally
