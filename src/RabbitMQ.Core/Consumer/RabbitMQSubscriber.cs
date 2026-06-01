@@ -48,11 +48,11 @@ public sealed class RabbitMQSubscriber<TMessage> : DisposableObject, IRabbitMQSu
             _consumerTag = await _channel.Subscribe(_autoAck, OnConsume, OnSubscriberDisconnected, _properties.Bindings);
             // Only List on disconnected if we are able to subscribe to it
             _channel.Disconnected += OnChannelDisconnected;
-            _logger.LogInformation($"{nameof(RabbitMQSubscriber<TMessage>)}.{nameof(Subscribe)} Subscribed to {_queueProperties.Name}, autoAck {_autoAck}, consumer Tag : {_consumerTag} on channel {_channel.Id}. Exchange: {_properties.Exchange}, ExchangeType: {_properties.ExchangeType}, Bindings: {_properties.Bindings.Count()} {(_properties.Bindings.Count() == 1 ? _properties.Bindings.First() : string.Empty)}");
+            _logger.LogInformation($"{nameof(RabbitMQSubscriber<TMessage>)}.{nameof(Subscribe)} Subscribed to {_queueProperties.Name}, autoAck {_autoAck}, consumer Tag: {_consumerTag} on channel {_channel.Id}. Exchange: {_properties.Exchange}, ExchangeType: {_properties.ExchangeType}, Bindings: {_properties.Bindings.Count()} {(_properties.Bindings.Count() == 1 ? _properties.Bindings.First() : string.Empty)}");
         }
         catch (Exception e)
         {
-            _logger.LogCritical($"{nameof(RabbitMQSubscriber<TMessage>)}.{nameof(Subscribe)} Failed to subscribe to queue {_queueProperties.Name} on channel. Exchange: {_properties.Exchange}, ExchangeType: {_properties.ExchangeType}, Bindings: {_properties.Bindings.Count()} {(_properties.Bindings.Count() == 1 ? _properties.Bindings.First() : string.Empty)}. Exception: {e}");
+            _logger.LogCritical($"{nameof(RabbitMQSubscriber<TMessage>)}.{nameof(Subscribe)} Failed to subscribe to queue {_queueProperties.Name} on channel. Exchange: {_properties.Exchange}, ExchangeType: {_properties.ExchangeType}, Bindings: {_properties.Bindings.Count()} {(_properties.Bindings.Count() == 1 ? _properties.Bindings.First() : string.Empty)}. Exception! {e}");
             if (_channel != null)
                 _channel.Disconnected -= OnChannelDisconnected;
             DisposeChannel();
@@ -63,9 +63,9 @@ public sealed class RabbitMQSubscriber<TMessage> : DisposableObject, IRabbitMQSu
     {
         try
         {
-            _logger.LogInformation($"{nameof(RabbitMQSubscriber<TMessage>)}.{nameof(OnConsume)} Received message from Exchange: {arguments?.Exchange}, Routing Key : {arguments?.RoutingKey} to Queue: {_queueProperties.Name}, on channel:{_channel?.Id}, Redelivered :{arguments?.Redelivered}, MessageId:{arguments?.BasicProperties?.MessageId}");
+            _logger.LogInformation($"{nameof(RabbitMQSubscriber<TMessage>)}.{nameof(OnConsume)} Received message from Exchange: {arguments?.Exchange}, Routing Key: {arguments?.RoutingKey} to Queue: {_queueProperties.Name}, on channel: {_channel?.Id}, Redelivered :{arguments?.Redelivered}, MessageId:{arguments?.BasicProperties?.MessageId}");
             EnsureNotDisposing();
-            // _logger.LogInformation($"Received message from Exchange: {arguments?.Exchange}, Routing Key : {arguments?.RoutingKey} to Queue: {_queueProperties.Name}, on channel:{_channel?.Id}, Redelivered :{arguments?.Redelivered}, MessageId:{arguments?.BasicProperties?.MessageId}");
+            // _logger.LogInformation($"Received message from Exchange: {arguments?.Exchange}, Routing Key: {arguments?.RoutingKey} to Queue: {_queueProperties.Name}, on channel:{_channel?.Id}, Redelivered :{arguments?.Redelivered}, MessageId:{arguments?.BasicProperties?.MessageId}");
             var jsonContext = new RabbitMQConsumerContext(_queueProperties.Name, arguments, _channel, _autoAck, _logger);
             IRabbitMQConsumeContext<TMessage> consumeContext = jsonContext.GetConsumeContext<TMessage>();
             //using (var scope = _container.CreateScope())
@@ -86,10 +86,10 @@ public sealed class RabbitMQSubscriber<TMessage> : DisposableObject, IRabbitMQSu
         }
         catch (Exception ex)
         {
-            _logger.LogCritical($"{nameof(RabbitMQSubscriber<TMessage>)}.{nameof(OnConsume)} Failed to route message to consumer from Exchange: {arguments?.Exchange}, Routing Key : {arguments?.RoutingKey} to Queue: {_queueProperties.Name}. Exception! {ex}");
+            _logger.LogCritical($"{nameof(RabbitMQSubscriber<TMessage>)}.{nameof(OnConsume)} Failed to route message to consumer from Exchange: {arguments?.Exchange}, Routing Key: {arguments?.RoutingKey} to Queue: {_queueProperties.Name}. Exception! {ex}");
             if (!_autoAck && arguments != null)
             {
-                _logger.LogInformation($"{nameof(RabbitMQSubscriber<TMessage>)}.{nameof(OnConsume)} Requeing the message, from Exchange: {arguments?.Exchange}, Routing Key : {arguments?.RoutingKey} to Queue: {_queueProperties.Name} Rabbit Message Consumer");
+                _logger.LogInformation($"{nameof(RabbitMQSubscriber<TMessage>)}.{nameof(OnConsume)} Requeing the message, from Exchange: {arguments?.Exchange}, Routing Key: {arguments?.RoutingKey} to Queue: {_queueProperties.Name} Rabbit Message Consumer");
                 _channel?.Nack(arguments.DeliveryTag, false, ex is ChannelDisposingException /* Requeue if this exception is caused by channel being disposed so any transient issues are handles*/);
             }
         }
