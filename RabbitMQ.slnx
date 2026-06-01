@@ -1,0 +1,5 @@
+﻿<Solution>
+	<Project Path="src\RabbitMQ.Core\RabbitMQ.Core.csproj" />
+	<Project Path="src\RabbitMQ.Publisher\RabbitMQ.Publisher.csproj" />
+	<Project Path="src\RabbitMQ.Subscriber\RabbitMQ.Subscriber.csproj" />
+</Solution>

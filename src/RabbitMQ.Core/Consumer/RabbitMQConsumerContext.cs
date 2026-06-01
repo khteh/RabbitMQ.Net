@@ -37,8 +37,7 @@ public class RabbitMQConsumerContext : BaseRabbitMQConsumeContext
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(
-                $"{nameof(RabbitMQConsumerContext)}.{nameof(GetConsumeContext)}: Failed to Convert the incoming message to {typeof(TMessage).Name}, on queue:{QueueName}, exception:{ex}");
+            _logger.LogCritical($"{nameof(RabbitMQConsumerContext)}.{nameof(GetConsumeContext)}: Failed to Convert the incoming message to {typeof(TMessage).Name}, on queue:{QueueName}, exception:{ex}");
             throw;
         }
     }

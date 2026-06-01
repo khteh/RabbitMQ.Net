@@ -200,7 +200,7 @@ public class RabbitMQChannel : DisposableObject, IRabbitMQChannel
         }
         catch (Exception e)
         {
-            _logger.LogError($"{nameof(RabbitMQChannel)}.{nameof(Subscribe)} Exception! {e.Message} {e.GetInnerMessage()} {e.StackTrace}");
+            _logger.LogCritical($"{nameof(RabbitMQChannel)}.{nameof(Subscribe)} Exception! {e.Message} {e.GetInnerMessage()} {e.StackTrace}");
             throw;
         }
     }
@@ -208,10 +208,11 @@ public class RabbitMQChannel : DisposableObject, IRabbitMQChannel
         where TMessage : class
         where TResponse : class
     {
-        var properties = new RequestResponseProperties();
-        properties.Exchange = exchange;
-        properties.RoutingKey = routingKey;
-
+        var properties = new RequestResponseProperties()
+        {
+            Exchange = exchange,
+            RoutingKey = routingKey
+        };
         // Apply Custom settings
         configuration?.Invoke(properties);
         return await Request<TMessage, TResponse>(message, properties);
@@ -262,7 +263,7 @@ public class RabbitMQChannel : DisposableObject, IRabbitMQChannel
         },
         async (o, cancellationArg) =>
         {
-            RabbitMQSubscriberDisconnectedEventArgs args = cancellationArg as RabbitMQSubscriberDisconnectedEventArgs;
+            RabbitMQSubscriberDisconnectedEventArgs args = cancellationArg;
             responseReceivedTask.TrySetException(new InvalidOperationException($"The Subscription has been cancelled. subscriber tags: {string.Join(",", args.ConsumerTags)}, is subscriber running: {args.IsSubscriberRunning}"));
         }, new List<string>() { properties.RoutingKey }
         );
@@ -274,7 +275,6 @@ public class RabbitMQChannel : DisposableObject, IRabbitMQChannel
         {
             ct = new CancellationTokenSource(properties.ReplyWaitTime);
             ct.Token.Register(() => responseReceivedTask.TrySetException(new TimeoutException($"Responder on the queue {replyQueueName}, didn't respond in time")), useSynchronizationContext: false);
-
             return await responseReceivedTask.Task;
         }
         finally
@@ -301,7 +301,7 @@ public class RabbitMQChannel : DisposableObject, IRabbitMQChannel
     public async Task Nack(ulong deliveryTag, bool nackMultipleMessages, bool reQueue)
     {
         EnsureChannelHealthy();
-        _logger.LogWarning($"Nack message:{deliveryTag} re-queue:{reQueue}, on channel {_channel.ChannelNumber}");
+        _logger.LogWarning($"{nameof(RabbitMQChannel)}.{nameof(Nack)} Nack message:{deliveryTag} re-queue:{reQueue}, on channel {_channel.ChannelNumber}");
         await _channelLock.WaitAsync();
         try
         {
@@ -310,44 +310,60 @@ public class RabbitMQChannel : DisposableObject, IRabbitMQChannel
         }
         catch (Exception ackEx)
         {
-            _logger.LogError($"An error occurred trying to NACK a message with delivery tag: {deliveryTag}, exception: {ackEx}");
+            _logger.LogCritical($"{nameof(RabbitMQChannel)}.{nameof(Nack)} An error occurred trying to NACK a message with delivery tag: {deliveryTag} Exception! {ackEx}");
         }
         finally
         {
             _channelLock.Release();
         }
     }
-    protected override void Disposing()
+    protected override async Task Disposing()
     {
         int channelId = _channel?.ChannelNumber ?? -1;
-        using (var cancellationTokenSource = new CancellationTokenSource())
+        using CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+        try
         {
+            cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(2));
+            await _channelLock.WaitAsync();
+            if (_channel != null && _channel.IsOpen)
+            {
+                _channel.ChannelShutdownAsync -= OnChannelShutdown;
+                await _channel.CloseAsync(200, $"{nameof(RabbitMQChannel)} Disposing", false, cancellationTokenSource.Token);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical($"{nameof(RabbitMQChannel)}.{nameof(Disposing)} Channel Id: {channelId} failed to dispose. Exception:{ex}");
+        }
+        finally
+        {
+            _channelLock.Release();
+        }
+#if false
             var disposeTask = Task.Run(() =>
             {
                 try
                 {
                     if (_channel != null && _channel.IsOpen)
-                    {
                         lock (_channelLock)
                         {
                             _channel.ChannelShutdownAsync -= OnChannelShutdown;
+                            await _channel.CloseAsync();
                             //_channel?.Close(200, $"{nameof(RabbitMQChannel)} Disposing");
                         }
-                    }
-
-                    _logger.LogInformation("Channel Id:{ChannelId} dispose succeeded", channelId);
+                    _logger.LogInformation($"{nameof(RabbitMQChannel)}.{nameof(Disposing)} Channel Id: {channelId} disposed successfully");
                 }
                 catch (Exception exception)
                 {
-                    _logger.LogInformation("Channel Id:{ChannelId} failed to dispose. Exception:{@Exception}", channelId, exception);
+                    _logger.LogCritical($"{nameof(RabbitMQChannel)}.{nameof(Disposing)} Channel Id: {channelId} failed to dispose. Exception:{exception}");
                 }
             });
             if (!disposeTask.Wait(TimeSpan.FromSeconds(2)))
             {
                 cancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(2));
-                _logger.LogInformation("Channel Id:{ChannelId} failed to dispose within time limit.", channelId);
+                _logger.LogWarning($"{nameof(RabbitMQChannel)}.{nameof(Disposing)} Channel Id: {channelId} failed to dispose within time limit!");
             }
-        }
+#endif
     }
 
     private bool IsChannelHealthy()

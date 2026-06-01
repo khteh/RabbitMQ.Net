@@ -295,10 +295,10 @@ public class RabbitMQConnection : DisposableObject, IRabbitMQConnection
         }
 #endif
     /// <inheritdoc/>
-    protected override void Disposing()
+    protected override async Task Disposing()
     {
         if (_connectionFactory != null)
             _connectionFactory.AutomaticRecoveryEnabled = false;
-        Task.Run(async () => await ClearConnection($"{nameof(RabbitMQConnection)} disposing"));
+        await ClearConnection($"{nameof(RabbitMQConnection)} disposing");
     }
 }

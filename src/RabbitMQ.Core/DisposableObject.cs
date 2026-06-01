@@ -41,7 +41,7 @@ public abstract class DisposableObject : IDisposable
             if (!IsDisposed && disposing)
             {
                 IsDisposing = true;
-                Disposing();
+                Task.Run(() => Disposing());
             }
         }
         finally
@@ -54,7 +54,7 @@ public abstract class DisposableObject : IDisposable
     /// <summary>
     ///     Overridden in implementing objects to perform actual clean-up.
     /// </summary>
-    protected virtual void Disposing()
+    protected virtual async Task Disposing()
     {
     }
 }
