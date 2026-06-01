@@ -27,38 +27,11 @@ public class RabbitMQChannel : DisposableObject, IRabbitMQChannel
         _channel = channel;
         _channelId = _channel.ChannelNumber.ToString();
         _logger = logger;
-        _consumers = new Dictionary<string, AsyncEventingBasicConsumer>();
         _queue = queueName;
-        _channel.ChannelShutdownAsync += OnChannelShutdown;
         _exchange = exchange;
-#if false
-        _channel.BasicReturnAsync += BasicReturnAsyncHandler;
-        _channel.BasicAcksAsync += BasicAcksAsyncHandler;
-        _channel.BasicNacksAsync += BasicNacksAsyncHandler;
-#endif
-        _logger.LogInformation($"Channel Created {_channel.ChannelNumber}, Queue: {_queue}");
-    }
-    private async Task BasicAcksAsyncHandler(object sender, BasicAckEventArgs ea)
-    {
-        _logger.LogInformation($"Message with sequence number: {ea.DeliveryTag} has been acknowledged (multiple: {ea.Multiple})");
-    }
-    private async Task BasicNacksAsyncHandler(object sender, BasicNackEventArgs ea)
-    {
-        _logger.LogWarning($"[WARNING] message sequence number: {ea.DeliveryTag} has been nacked (multiple: {ea.Multiple})");
-    }
-    private async Task BasicReturnAsyncHandler(object sender, BasicReturnEventArgs ea)
-    {
-        ulong sequenceNumber = 0;
-        IReadOnlyBasicProperties props = ea.BasicProperties;
-        if (props.Headers is not null)
-        {
-            object? maybeSeqNum = props.Headers[Constants.PublishSequenceNumberHeader];
-            if (maybeSeqNum is not null)
-            {
-                sequenceNumber = BinaryPrimitives.ReadUInt64BigEndian((byte[])maybeSeqNum);
-            }
-        }
-        _logger.LogWarning($"[WARNING] message sequence number {sequenceNumber} has been basic.return-ed");
+        _consumers = new Dictionary<string, AsyncEventingBasicConsumer>();
+        _channel.ChannelShutdownAsync += OnChannelShutdown;
+        _logger.LogDebug($"{nameof(RabbitMQChannel)} {_channel.ChannelNumber}, Queue: {_queue}");
     }
     private async Task OnChannelShutdown(object sender, ShutdownEventArgs e)
     {
@@ -95,11 +68,19 @@ public class RabbitMQChannel : DisposableObject, IRabbitMQChannel
         EnsureChannelHealthy();
         byte[] body = JsonSerializer.SerializeToUtf8Bytes(message);
         // Set a default time interval for the wait
-        TaskCompletionSource<PublishResult> returnReceivedTask = new TaskCompletionSource<PublishResult>(default(TaskCreationOptions));
+        TaskCompletionSource<PublishResult> returnReceivedTask = new TaskCompletionSource<PublishResult>();
         AsyncEventHandler<BasicReturnEventArgs> basicReturnHandler = async (o, e) =>
         {
-            _logger.LogError($"Publish message returned Code: {e.ReplyCode}, Reply: {e.ReplyText}, Exchange: {properties.Exchange}, ExchangeType: {properties.ExchangeType}, RoutingKey: {properties.RoutingKey}, Queue: {properties.Queue}");
-            returnReceivedTask.TrySetException(new InvalidOperationException($"Publish message returned Code: {e.ReplyCode}, Reply: {e.ReplyText}, Exchange: {properties.Exchange}, ExchangeType: {properties.ExchangeType}, RoutingKey: {properties.RoutingKey}, Queue: {properties.Queue}"));
+            ulong sequenceNumber = 0;
+            IReadOnlyBasicProperties props = e.BasicProperties;
+            if (props.Headers is not null)
+            {
+                object? maybeSeqNum = props.Headers[Constants.PublishSequenceNumberHeader];
+                if (maybeSeqNum is not null)
+                    sequenceNumber = BinaryPrimitives.ReadUInt64BigEndian((byte[])maybeSeqNum);
+            }
+            _logger.LogError($"Message sequence number {sequenceNumber} has been basic.return-ed! Reply: {e.ReplyCode}, {e.ReplyText}, Exchange: {properties.Exchange}, ExchangeType: {properties.ExchangeType}, RoutingKey: {properties.RoutingKey}, Queue: {properties.Queue}");
+            returnReceivedTask.TrySetException(new InvalidOperationException($"Message sequence number {sequenceNumber} has been basic.return-ed! Reply: {e.ReplyCode}, {e.ReplyText}, Exchange: {properties.Exchange}, ExchangeType: {properties.ExchangeType}, RoutingKey: {properties.RoutingKey}, Queue: {properties.Queue}"));
         };
         AsyncEventHandler<BasicNackEventArgs> basicNackHandler = async (o, e) =>
         {
@@ -108,7 +89,7 @@ public class RabbitMQChannel : DisposableObject, IRabbitMQChannel
         };
         AsyncEventHandler<BasicAckEventArgs> basicAckHandler = async (o, e) =>
         {
-            _logger.LogInformation($"Published Message Accepted with delivery Tag {e.DeliveryTag}, multiple: {e.Multiple}");
+            _logger.LogDebug($"Published Message Accepted with delivery Tag {e.DeliveryTag}, multiple: {e.Multiple}");
             returnReceivedTask.TrySetResult(new PublishResult(true, e.DeliveryTag, e.Multiple, null));
         };
         await _channelLock.WaitAsync();
