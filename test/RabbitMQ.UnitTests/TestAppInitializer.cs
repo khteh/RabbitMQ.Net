@@ -8,7 +8,7 @@ public sealed class TestAppInitializer
     public TestAppInitializer()
     {
         ServiceCollection services = new ServiceCollection();
-        services.Add
+        //services.Add
     }
 
     public override IDependencyContainer Build()

@@ -56,7 +56,7 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "build_unit_tests",
+            "label": "build unit tests",
             "command": "dotnet",
             "type": "process",
             "args": [
@@ -68,7 +68,7 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "build_publisher",
+            "label": "build publisher",
             "command": "dotnet",
             "type": "process",
             "args": [
@@ -80,7 +80,7 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "build_subscriber",
+            "label": "build subscriber",
             "command": "dotnet",
             "type": "process",
             "args": [
@@ -92,7 +92,7 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "build_publisher_release",
+            "label": "build publisher(release)",
             "command": "dotnet",
             "type": "process",
             "args": [
@@ -106,7 +106,7 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "build_subscriber_release",
+            "label": "build subscriber(release)",
             "command": "dotnet",
             "type": "process",
             "args": [
@@ -120,7 +120,7 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "publish publisher Release",
+            "label": "Publish Publisher",
             "command": "dotnet",
             "type": "process",
             "args": [
@@ -138,7 +138,7 @@
             "problemMatcher": "$msCompile"
         },
         {
-            "label": "publish subscriber Release",
+            "label": "Publish Subscriber",
             "command": "dotnet",
             "type": "process",
             "args": [
