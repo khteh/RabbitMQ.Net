@@ -40,8 +40,3 @@ A .NET 10.0 application demonstrating a RabbitMQ publisher/subscriber pattern us
 # Continuous Integration:
 
 - Integrated with CircleCI
-
-# Kubernetes
-
-- If ingress uses a prefix path, the prefix needs to be added as an environment variable `PATH_BASE` (or `appsettings.json` mounted from ConfigMap)
-- Swagger does NOT work when the `PATH_BASE` is not `/` due to an issued filed as https://github.com/dotnet/aspnetcore/issues/42559
