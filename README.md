@@ -21,20 +21,12 @@ A .NET 10.0 application demonstrating a RabbitMQ publisher/subscriber pattern us
 
 # Visual Studio
 
-- Generate TLS cert and put the `localhost.pfx` into `/tmp`
-- Open the solution file <code>AspNetCoreWebApi.sln</code> and build/run.
+- Open the solution file <code>RabbitMQ.slnx</code> and build/run.
 
 # Visual Studio Code
 
 - `Ctrl`+`Shift`+`B` to build
-- Generate TLS cert and put the `localhost.pfx` into `/tmp`
 - `F5` to start debug session
-
-## Unit Testing
-
-- Install .Net Core Test Explorer
-- `echo fs.inotify.max_user_instances=524288 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p`
-- https://github.com/dotnet/aspnetcore/issues/8449
 
 # Logs
 
