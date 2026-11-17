@@ -38,8 +38,8 @@ jobs:
       - run:
           name: Extract FileVersion from published binary
           command: |
-            exiftool src/RabbitMQ.Publisher/bin/Release/net10.0/linux-x64/publish/RabbitMQ.Publisher.dll | grep "File Version" | awk -F":" '{ print $2 }' | xargs echo -n > publisher_version.txt
-            exiftool src/RabbitMQ.Subscriber/bin/Release/net10.0/linux-x64/publish/RabbitMQ.Subscriber.dll | grep "File Version" | awk -F":" '{ print $2 }' | xargs echo -n > subscriber_version.txt
+            exiftool src/RabbitMQ.Publisher/bin/Release/net11.0/linux-x64/publish/RabbitMQ.Publisher.dll | grep "File Version" | awk -F":" '{ print $2 }' | xargs echo -n > publisher_version.txt
+            exiftool src/RabbitMQ.Subscriber/bin/Release/net11.0/linux-x64/publish/RabbitMQ.Subscriber.dll | grep "File Version" | awk -F":" '{ print $2 }' | xargs echo -n > subscriber_version.txt
       - run:
           name: Build Publisher docker image
           command: |
